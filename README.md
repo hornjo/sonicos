@@ -1,2 +1,3 @@
-# sonicos
-Ansible collection for SonicWALL firewalls with sonicos
+# Ansible Collection - hornjo.sonicos
+
+Documentation for the collection.

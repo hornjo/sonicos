@@ -66,41 +66,37 @@ message:
     sample: 'goodbye'
 '''
 
+import json
+import requests
+
 from ansible.module_utils.basic import AnsibleModule
 
 
 def run_module():
-    # define available arguments/parameters a user can pass to the module
     module_args = dict(
+        hostname=dict(type='str', required=True),
         username=dict(type='str', required=False, default='admin'),
         password=dict(type='str', required=True),
-        ip_version=dict(type='str',
-                        choices=['ipv4', 'ipv6'], 
-                        default='ipv4'),
+        object_type=dict(type='str', choices=['ipv4', 'ipv6', 'range', 'network', 'MAC', 'FQDN'], default='objects'),
         zone=dict(type='str', required=False, default='all'),
-        kinds=dict(type='str',
-                   choices=['default', 'custom', 'all'],
-                   default='all')
+        name=dict(type='str', required=True),
+        ip=dict('str', required=True),
+        state=dict(type='str', choices=['present', 'absent'], required=True)
     )
 
-    # seed the result dict in the object
-    # we primarily care about changed and state
-    # changed is if this module effectively modified the target
-    # state will include any data that you want your module to pass back
-    # for consumption, for example, in a subsequent task
     result = dict(
         changed=False,
         original_message='',
         message=''
     )
 
-    # the AnsibleModule object will be our abstraction working with Ansible
-    # this includes instantiation, a couple of common attr would be the
-    # args/params passed to the execution, as well as if the module
-    # supports check mode
     module = AnsibleModule(
         argument_spec=module_args,
-        supports_check_mode=True
+        supports_check_mode=True,
+        required_if=[
+            ['type', 'objects', ['object_type']],
+            ['object_type', 'host', ['ip_version']],
+        ]
     )
 
     # if the user is working with this module in only check mode we do not
@@ -111,13 +107,23 @@ def run_module():
 
     # manipulate or modify the state as needed (this is going to be the
     # part where your module will do what it needs to do)
-    result['original_message'] = module.params['name']
-    result['message'] = 'goodbye'
+    authentication=requests.post('/tfa', auth=(module.params['username'], module.params['password']))
 
-    # use whatever logic you need to determine whether or not this module
-    # made any modifications to your target
-    if module.params['new']:
+    if module.params['state'].lower == "present":
+        match module.params['object_type']:
+            case "ipv4":
+                url="https://" + module.params['hostname'] + "/address-objects/ipv4"
+                status=requests.get(url)
+                status_dict=status.response.json()
+                if status_dict['address_object']['ipv4']['ip']['name'] != module.params['name']:
+                    json_dict={"address_object": {"ipv4": {"name": module.params['name'],"host": {"ip": "{string}" }}}}
+                    create=requests.post("https://" + module.params['hostname'] + "/address-objects/ipv4", json=)
+            
+    elif module.params['state'].lower == "absent":
         result['changed'] = True
+    
+    else:
+        module.fail_json(msg='Bad state input, use either present or absent', **result)
 
     # during the execution of the module, if there is an exception or a
     # conditional state that effectively causes a failure, run
