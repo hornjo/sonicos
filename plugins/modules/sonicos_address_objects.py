@@ -75,12 +75,14 @@ from ansible.module_utils.basic import AnsibleModule
 def run_module():
     module_args = dict(
         hostname=dict(type='str', required=True),
-        username=dict(type='str', required=False, default='admin'),
+        username=dict(type='str', required=True),
         password=dict(type='str', required=True),
         object_type=dict(type='str', choices=['ipv4', 'ipv6', 'range', 'network', 'MAC', 'FQDN'], default='objects'),
         zone=dict(type='str', required=False, default='all'),
         name=dict(type='str', required=True),
-        ip=dict('str', required=True),
+        ip=dict(type='str', required=True),
+        ip_range=dict(type='str', required=True),
+        fqdn=dict(type='str', required=True),
         state=dict(type='str', choices=['present', 'absent'], required=True)
     )
 
@@ -94,8 +96,10 @@ def run_module():
         argument_spec=module_args,
         supports_check_mode=True,
         required_if=[
-            ['type', 'objects', ['object_type']],
-            ['object_type', 'host', ['ip_version']],
+            ['object_type', 'ipv4', ['ip']],
+            ['object_type', 'ipv6', ['ip']],
+            ['object_type', 'range', ['ip_range']],
+            ['object_type', 'range', ['fqdn']],
         ]
     )
 
@@ -107,17 +111,21 @@ def run_module():
 
     # manipulate or modify the state as needed (this is going to be the
     # part where your module will do what it needs to do)
-    authentication=requests.post('/tfa', auth=(module.params['username'], module.params['password']))
+    auth_url="https://" + module.params['hostname'] + "/api/sonicos/auth"
+    requests.post(auth_url, auth=(module.params['username'], module.params['password']), verify=False)
 
     if module.params['state'].lower == "present":
         match module.params['object_type']:
             case "ipv4":
-                url="https://" + module.params['hostname'] + "/address-objects/ipv4"
+                url="https://" + module.params['hostname'] + "/api/sonicos/address-objects/ipv4"
                 status=requests.get(url)
                 status_dict=status.response.json()
                 if status_dict['address_object']['ipv4']['ip']['name'] != module.params['name']:
-                    json_dict={"address_object": {"ipv4": {"name": module.params['name'],"host": {"ip": "{string}" }}}}
-                    create=requests.post("https://" + module.params['hostname'] + "/address-objects/ipv4", json=)
+                    json_dict={"address_object": {"ipv4": {"name": module.params['name'],"host": {"ip": module.params['ip'] },"zone": module.params['zone'] }}}
+                    requests.post(url, json=json_dict)
+                elif status_dict['address_object']['ipv4']['ip']['name'] == module.params['name']:
+                    json_dict={"address_object": {"ipv4": {"name": module.params['name'],"host": {"ip": module.params['ip'] }}}}
+                    requests.patch(url, json=json_dict)
             
     elif module.params['state'].lower == "absent":
         result['changed'] = True
