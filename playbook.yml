@@ -1,0 +1,86 @@
+---
+- name: Test playbook for the collections an modules
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    # - name: Testing the address_object module - host
+    #   sonicos_address_objects:
+    #     hostname: 192.168.178.144
+    #     username: admin
+    #     password: "walli4CHINA"
+    #     ssl_verify: false
+    #     object_name: ModuleTest8
+    #     object_type: host
+    #     zone: WAN
+    #     ip: 10.5.5.9
+    #     state: absent
+# 
+    # - name: Testing the address_object module - ipv6
+    #   sonicos_address_objects:
+    #     hostname: 192.168.178.144
+    #     username: admin
+    #     password: "walli4CHINA"
+    #     ssl_verify: false
+    #     object_name: ModuleTest8
+    #     object_type: host
+    #     ip_version: ipv6
+    #     zone: VPN
+    #     ip: 2a00:10:7157:4201:1c2c:b499:96df:e1b9
+    #     state: present
+# 
+    # - name: Testing the address_object module - range
+    #   sonicos_address_objects:
+    #     hostname: 192.168.178.144
+    #     username: admin
+    #     password: "walli4CHINA"
+    #     ssl_verify: false
+    #     object_name: ModuleTest7
+    #     object_type: range
+    #     zone: WAN
+    #     ip_range:
+    #       begin: 10.5.5.5
+    #       end: 10.5.5.7
+    #     state: absent
+# 
+    # - name: Testing the address_object module - network
+    #   sonicos_address_objects:
+    #     hostname: 192.168.178.144
+    #     username: admin
+    #     password: "walli4CHINA"
+    #     ssl_verify: false
+    #     object_name: ModuleTest8
+    #     object_type: network
+    #     zone: WAN
+    #     network:
+    #       subnet: 10.5.5.0
+    #       mask: 255.255.255.0
+    #     state: absent
+# 
+    # - name: Testing the address_object module - mac
+    #   sonicos_address_objects:
+    #     hostname: 192.168.178.144
+    #     username: admin
+    #     password: "walli4CHINA"
+    #     ssl_verify: false
+    #     object_name: ModuleTest_MAC
+    #     object_type: mac
+    #     zone: WAN
+    #     mac: 00:e0:4c:68:11:9c
+    #     state: present
+
+    - name: Testing the address_object module - fqdn
+      sonicos_address_objects:
+        hostname: 192.168.178.144
+        username: admin
+        password: "walli4CHINA"
+        ssl_verify: false
+        object_name: ModuleTest_fqdn
+        object_type: fqdn
+        zone: WAN
+        fqdn: youtube.de
+        state: present
+      register:  Test
+
+    - name: Debug
+      ansible.builtin.debug:
+        var: Test  

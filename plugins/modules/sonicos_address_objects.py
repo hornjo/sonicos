@@ -1,152 +1,367 @@
 #!/usr/bin/python
 
-# Copyright: (c) 2018, Terry Jones <terry.jones@example.org>
+# Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
-module: sonicos_get_address_objects
+module: sonicos_address_objects
 
-short_description: Out puts all address objects based on a selection
+short_description: Manages all available featrues for address objects on SonicWALL
 version_added: "1.0.0"
 description: 
-- Within this module you can list address objects based on filters like: custom, zones, types, ip types, etc.
+- This brings the capability to authenticate, manage all kinds of address objects and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
-    name:
-        description: This is the message to send to the test module.
+    hostname:
+        description: Defines the endpoint of the sonicos.
         required: true
         type: str
-    new:
-        description:
-            - Control to demo if the result of this module is changed or not.
-            - Parameter description can be a list as well.
+    username:
+        description: The username for the login and authentication.
+        required: true
+        type: str
+    password:
+        description: The password for the authentication and login.
+        required: true
+        type: str
+    ssl_verify:
+        description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
-# Specify this value according to your collection
-# in format of namespace.collection.doc_fragment_name
-# extends_documentation_fragment:
-#     - my_namespace.my_collection.my_doc_fragment_name
+    object_name:
+        description: Name of the address object.
+        required: true
+        type: str
+    object_type:
+        description: Kind of the address object, like host, range, network, mac or fqdn.
+        required: true
+        type: str
+    zone:
+        description: Zone of the address object.
+        required: true
+        type: str
+    ip:
+        description: Ip of the address object when host is used.
+        required: false
+        type: str
+    ip_range:
+        description: Ip range of the address object when range is used.
+        required: false
+        type: dict
+        begin:
+            description: Begin of the ip range.
+            required: false
+            type: str
+        end:
+            description: End of the ip range.
+            required: false
+            type: str
+    network:
+        description: Ip range of the address object when network is used.
+        required: false
+        type: dict
+        subnet:
+            description: Net address of the network.
+            required: false
+            type: str
+        mask:
+            description: Subnet mask of the network.
+            required: false
+            type: str
+    fqdn:
+        description: Fqdn of the address object when fqdn is used.
+        required: false
+        type: str
+    mac:
+        description: Mac address of the address object when mac is used. Supported types are with/without colons and lowercase/uppercase.
+        required: false
+        type: str 
+    multi_homed:
+        description: Defines whether a mac addres can be multi homed or not. Default is true.
+        required: false
+        type: bool 
+    state:
+        description: Defines whether a object should be present or absent. Default is present.
+        required: true
+        type: str 
+
+extends_documentation_fragment:
+    - hornjo.sonicos.sonicos_documentation
 
 author:
     - Johannes Horn (@hornjo)
-'''
+    - Marco Fuchs (@FuxMak)
+"""
 
-EXAMPLES = r'''
-# Pass in a message
-- name: Test with a message
-  my_namespace.my_collection.my_test:
-    name: hello world
+EXAMPLES = r"""
+- name: Create ipv4 host object
+  hornjo.sonicos.sonicos_address_object:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    ssl_verify: false
+    object_name: my_object
+    object_type: host
+    zone: LAN
+    ip: 10.5.5.9
+    state: present
 
-# pass in a message and have changed true
-- name: Test with a message and changed output
-  my_namespace.my_collection.my_test:
-    name: hello world
-    new: true
+- name: Delete ipv6 host object
+  hornjo.sonicos.sonicos_address_object:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    object_name: my_object
+    object_type: host
+    ip_version: ipv6
+    zone: VPN
+    ip: 2a00:10:7557:4202:1c2c:b459:96df:e1b9
+    state: absent
 
-# fail the module
-- name: Test failure of the module
-  my_namespace.my_collection.my_test:
-    name: fail me
-'''
+- name: Create range object
+  hornjo.sonicos.sonicos_address_object:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    object_name: my_object
+    object_type: range
+    zone: WLAN
+    ip_range:
+      begin: 10.5.5.5
+      end: 10.5.5.7
+    state: present
 
-RETURN = r'''
-# These are examples of possible return values, and in general should use other names for return values.
-original_message:
-    description: The original name param that was passed in.
-    type: str
-    returned: always
-    sample: 'hello world'
-message:
-    description: The output message that the test module generates.
-    type: str
-    returned: always
-    sample: 'goodbye'
-'''
+- name: Create network object
+  hornjo.sonicos.sonicos_address_object:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    object_name: my_object
+    object_type: network
+    zone: VPN
+    network:
+      subnet: 10.5.5.0
+      mask: 255.255.255.0
+    state: present
 
-import json
+- name: Create mac object
+  hornjo.sonicos.sonicos_address_object:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    object_name: my_object
+    object_type: mac
+    zone: WAN
+    mac: 00:e0:4c:67:11:9c
+    state: present
+
+- name: Create fqdn object
+  hornjo.sonicos.sonicos_address_object:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    object_name: my_object
+    object_type: fqdn
+    zone: WAN
+    fqdn: github.com/hornjo
+    state: absent
+
+"""
+
+RETURN = r"""
+"""
+
+
+# Importing needed libraries
 import requests
-
+import urllib3
 from ansible.module_utils.basic import AnsibleModule
 
 
-def run_module():
-    module_args = dict(
-        hostname=dict(type='str', required=True),
-        username=dict(type='str', required=True),
-        password=dict(type='str', required=True),
-        object_type=dict(type='str', choices=['ipv4', 'ipv6', 'range', 'network', 'MAC', 'FQDN'], default='objects'),
-        zone=dict(type='str', required=False, default='all'),
-        name=dict(type='str', required=True),
-        ip=dict(type='str', required=True),
-        ip_range=dict(type='str', required=True),
-        fqdn=dict(type='str', required=True),
-        state=dict(type='str', choices=['present', 'absent'], required=True)
-    )
+# Defining module arguments
+module_args = dict(
+    hostname=dict(type="str", required=True),
+    username=dict(type="str", required=True),
+    password=dict(type="str", required=True, no_log=True),
+    ssl_verify=dict(type="bool", default=True),
+    object_name=dict(type="str", required=True),
+    object_type=dict(type="str", choices=["host", "range", "network", "mac", "fqdn"], required=True),
+    zone=dict(type="str", required=True),
+    ip_version=dict(type="str", choices=["ipv4", "ipv6"], default="ipv4"),
+    ip=dict(type="str"),
+    ip_range=dict(
+        type="dict",
+        begin=dict(type="str"),
+        end=dict(type="str"),
+    ),
+    network=dict(
+        type="dict",
+        subnet=dict(type="str"),
+        mask=dict(type="str"),
+    ),
+    fqdn=dict(type="str"),
+    mac=dict(type="str"),
+    multi_homed=dict(type="bool", default=True),
+    state=dict(type="str", choices=["present", "absent"], default="present"),
+)
 
-    result = dict(
-        changed=False,
-        original_message='',
-        message=''
-    )
+# Defining registerable values
+result = dict(
+    changed=False,
+    output=None,
+)
 
-    module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True,
-        required_if=[
-            ['object_type', 'ipv4', ['ip']],
-            ['object_type', 'ipv6', ['ip']],
-            ['object_type', 'range', ['ip_range']],
-            ['object_type', 'range', ['fqdn']],
+# Defining ansible settings
+module = AnsibleModule(
+    argument_spec=module_args,
+    supports_check_mode=True,
+    required_if=[
+        ["object_type", "host", ["ip"]],
+        ["object_type", "range", ["ip_range"]],
+        ["object_type", "network", ["network"]],
+        ["object_type", "mac", ["mac"]],
+        ["object_type", "fqdn", ["fqdn"]],
+    ],
+)
+
+# Defining global variables
+url_base = "https://" + module.params["hostname"] + "/api/sonicos/"
+url_address_objects = url_base + "address-objects/"
+auth_params = (module.params["username"], module.params["password"])
+
+
+# Defining actual module functions
+def authentication():
+    url = url_base + "auth"
+    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
+    msg = res.json()["status"]["info"][0]["message"]
+    if res.status_code != 200:
+        module.fail_json(msg=msg, **result)
+    if res.json()["status"]["info"][0]["config_mode"] == "No":
+        configmode()
+
+
+def configmode():
+    url = url_base + "config-mode"
+    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
+    msg = res.json()["status"]["info"][0]["message"]
+    if res.status_code != 200:
+        module.fail_json(msg=msg, **result)
+
+
+def commit():
+    url = url_base + "config/pending"
+    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
+    msg = res.json()["status"]["info"][0]["message"]
+    if res.status_code != 200:
+        module.fail_json(msg=msg, **result)
+
+
+def get_json_params(type):
+    json_params = {
+        "address_objects": [
+            {
+                type: {
+                    "name": module.params["object_name"],
+                    "zone": module.params["zone"],
+                }
+            }
         ]
-    )
+    }
+    dict_object_type = json_params["address_objects"][0][type]
 
-    # if the user is working with this module in only check mode we do not
-    # want to make any changes to the environment, just return the current
-    # state with no modifications
-    if module.check_mode:
-        module.exit_json(**result)
+    match module.params["object_type"]:
+        case "host":
+            dict_object_type["host"] = {"ip": module.params["ip"]}
+        case "range":
+            dict_object_type["range"] = {
+                "begin": module.params["ip_range"]["begin"],
+                "end": module.params["ip_range"]["end"],
+            }
+        case "network":
+            dict_object_type["network"] = {
+                "subnet": module.params["network"]["subnet"],
+                "mask": module.params["network"]["mask"],
+            }
+        case "mac":
+            dict_object_type["address"] = module.params["mac"].replace(":", "").upper()
+            dict_object_type["multi_homed"] = module.params["multi_homed"]
+        case "fqdn":
+            dict_object_type["domain"] = module.params["fqdn"]
 
-    # manipulate or modify the state as needed (this is going to be the
-    # part where your module will do what it needs to do)
-    auth_url="https://" + module.params['hostname'] + "/api/sonicos/auth"
-    requests.post(auth_url, auth=(module.params['username'], module.params['password']), verify=False)
+    result["output"] = json_params["address_objects"][0]
 
-    if module.params['state'].lower == "present":
-        match module.params['object_type']:
-            case "ipv4":
-                url="https://" + module.params['hostname'] + "/api/sonicos/address-objects/ipv4"
-                status=requests.get(url)
-                status_dict=status.response.json()
-                if status_dict['address_object']['ipv4']['ip']['name'] != module.params['name']:
-                    json_dict={"address_object": {"ipv4": {"name": module.params['name'],"host": {"ip": module.params['ip'] },"zone": module.params['zone'] }}}
-                    requests.post(url, json=json_dict)
-                elif status_dict['address_object']['ipv4']['ip']['name'] == module.params['name']:
-                    json_dict={"address_object": {"ipv4": {"name": module.params['name'],"host": {"ip": module.params['ip'] }}}}
-                    requests.patch(url, json=json_dict)
-            
-    elif module.params['state'].lower == "absent":
-        result['changed'] = True
-    
-    else:
-        module.fail_json(msg='Bad state input, use either present or absent', **result)
+    return json_params
 
-    # during the execution of the module, if there is an exception or a
-    # conditional state that effectively causes a failure, run
-    # AnsibleModule.fail_json() to pass in the message and the result
-    if module.params['name'] == 'fail me':
-        module.fail_json(msg='You requested this to fail', **result)
 
-    # in the event of a successful module execution, you will want to
-    # simple AnsibleModule.exit_json(), passing the key/value results
+def execute_api_call(url, json_params, address_object_action):
+    match address_object_action:
+        case "patch":
+            res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "post":
+            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "delete":
+            res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+    if res.status_code == 200:
+        result["changed"] = True
+        return
+    msg = res.json()["status"]["info"][0]["message"]
+    module.fail_json(msg=msg, **result)
+
+
+def address_object():
+    type = module.params["ip_version"]
+
+    if module.params["object_type"] == "mac" or module.params["object_type"] == "fqdn":
+        type = module.params["object_type"]
+
+    url = url_address_objects + type
+    address_object_action = None
+
+    json_params = get_json_params(type)
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+
+    if module.params["state"] == "present":
+        address_object_action = "post"
+
+    if "address_objects" in req.json():
+        for item in req.json()["address_objects"]:
+            if item[type]["name"] != module.params["object_name"]:
+                continue
+
+            if module.params["state"] == "present":
+                address_object_action = "patch"
+
+            del item[type]["uuid"]
+
+            if item == json_params["address_objects"][0]:
+                if module.params["state"] == "absent":
+                    address_object_action = "delete"
+                    break
+                address_object_action = None
+
+    if address_object_action != None:
+        execute_api_call(url, json_params, address_object_action)
+
+
+# Defining the actual module actions
+def main():
+    if module.params["ssl_verify"] == False:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    authentication()
+
+    address_object()
+
+    commit()
+
     module.exit_json(**result)
 
 
-def main():
-    run_module()
-
-
-if __name__ == '__main__':
+# Executing the module
+if __name__ == "__main__":
     main()
