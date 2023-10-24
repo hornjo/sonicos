@@ -173,6 +173,20 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
+result:
+    description: information about performed operation
+    returned: always
+    type: str
+    sample: {
+        "changed": false,
+        "failed": false,
+        "output": {
+            "fqdn": {
+                "domain": "github.com/hornjo",
+                "name": "my_objcet",
+                "zone": "WAN"
+            }
+    }
 """
 
 
