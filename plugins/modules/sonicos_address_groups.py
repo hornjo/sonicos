@@ -73,6 +73,7 @@ result:
 # Importing needed libraries
 import requests
 import urllib3
+from flatten_json import flatten
 from ansible.module_utils.basic import AnsibleModule
 
 
@@ -89,7 +90,6 @@ module_args = dict(
         object_name=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"]),
         object_type=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"]),
     ),
-    ip_version=dict(type="str", choices=["ipv4", "ipv6"], default="ipv4"),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
 
@@ -141,34 +141,74 @@ def commit():
         module.fail_json(msg=msg, **result)
 
 
-def get_json_params(group_kind):
-    group_type = module.params["ip_version"]
+def get_address_object_type(address_object_name):
+    url = url_address_groups + "ipv6"
+    type = "ipv4"
 
-    json_params = {
-        group_kind: [
-            {
-                group_type: {
-                    "name": module.params["group_name"],
-                }
-            }
-        ]
-    }
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+
+    flat_req = flatten(req.json())
+
+    for key, value in flat_req.items():
+        if address_object_name == value:
+            type = "ipv6"
+            break
+
+    return type
+
+
+def get_json_params():
+    group_member_address_group = {"address_group": {}}
+    group_member_address_object = {"address_object": {}}
+    group_type = "ipv4"
 
     for item in module.params["group_member"]:
-        group_member_kind = "address_object"
-        type = module.params["ip_version"]
-
-        if item["object_type"] == "address_group":
-            group_member_kind = "address_group"
-
         if item["object_type"] == "mac" or item["object_type"] == "fqdn":
             type = item["object_type"]
 
-        json_params[group_kind][0].update(
-            {
-                group_member_kind: {type: [{"name": item["object_name"]}]},
+        if item["object_type"] != "mac" and item["object_type"] != "fqdn":
+            type = get_address_object_type(item["object_name"])
+
+        if item["object_type"] == "address_group":
+            try:
+                group_member_address_group["address_group"][type].append({"name": item["object_name"]})
+            except:
+                group_member_address_group["address_group"].update(
+                    {
+                        type: [
+                            {"name": item["object_name"]},
+                        ]
+                    }
+                )
+            continue
+
+        try:
+            group_member_address_object["address_object"][type].append({"name": item["object_name"]})
+        except:
+            group_member_address_object["address_object"].update(
+                {
+                    type: [
+                        {"name": item["object_name"]},
+                    ]
+                }
+            )
+
+    if "ipv6" in group_member_address_object["address_object"] or "ipv6" in group_member_address_group["address_group"]:
+        group_type = "ipv6"
+
+    json_params = {
+        "address_groups": {
+            group_type: {
+                "name": module.params["group_name"],
             }
-        )
+        }
+    }
+
+    json_params["address_groups"][group_type].update(group_member_address_group)
+    json_params["address_groups"][group_type].update(group_member_address_object)
+
+    # Debug
+    # module.fail_json(msg=json_params, **result)
     return json_params
 
 
@@ -188,43 +228,44 @@ def execute_api_call(url, json_params, address_group_action):
 
 
 def address_group():
-    url = url_address_groups + module.params["ip_version"]
     address_group_action = None
-    group_kind = "address_groups"
-
-    if len(module.params["group_member"]) == 1:
-        group_kind = "address_group"
-
-    json_params = get_json_params(group_kind)
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+    json_params = get_json_params()
 
     if module.params["state"] == "present":
         address_group_action = "post"
 
-    if "address_groups" in req.json():
-        for item in req.json()["address_groups"]:
-            # Debug
-            # module.fail_json(msg=item, **result)
-            module.fail_json(msg=json_params[group_kind][0], **result)
-            if item[module.params["ip_version"]]["name"] != module.params["group_name"]:
-                continue
+    for ip_version in "ipv4", "ipv6":
+        url = url_address_groups + ip_version
+        req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
 
-            if module.params["state"] == "present":
-                address_group_action = "patch"
+        if "address_groups" in req.json():
+            for item in req.json()["address_groups"]:
+                # Debug
+                module.fail_json(msg=url, **result)
+                # module.fail_json(msg=json_params, **result)
 
-            del item[module.params["ip_version"]]["uuid"]
+                if item[ip_version]["name"] != module.params["group_name"]:
+                    continue
 
-            # Debug
-            # module.fail_json(msg=item, **result)
+                # Debug
+                # module.fail_json(msg=item, **resut)
 
-            if item == json_params["address_group"][0]:
-                if module.params["state"] == "absent":
-                    address_group_action = "delete"
-                    break
-                address_group_action = None
+                if module.params["state"] == "present":
+                    address_group_action = "patch"
 
-    if address_group_action != None:
-        execute_api_call(url, json_params, address_group_action)
+                del item[ip_version]["uuid"]
+
+                # Debug
+                # module.fail_json(msg=item, **result)
+
+                if item == json_params["address_group"][0]:
+                    if module.params["state"] == "absent":
+                        address_group_action = "delete"
+                        break
+                    address_group_action = None
+
+                if address_group_action != None:
+                    execute_api_call(url, json_params, address_group_action)
 
 
 # Defining the actual module actions
