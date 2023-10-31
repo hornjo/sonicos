@@ -91,11 +91,12 @@
         username: admin
         password: "walli4CHINA"
         ssl_verify: false
-        group_name: Test_Group
+        group_name: Test_Group2
         group_member: 
           - {object_name: Test_Object, object_type: fqdn}
           - {object_name: Test_Object2, object_type: host}
-          - {object_name: ipv6, object_type: host}
-          - {object_name: Test_Advanced, object_type: address_group}
-          - {object_name: Test_Advanced2, object_type: address_group}
+          # - {object_name: ipv6, object_type: host}
+          # - {object_name: Test_Advanced, object_type: address_group}
+          # - {object_name: Test_Advanced2, object_type: address_group}
+        state: present
 

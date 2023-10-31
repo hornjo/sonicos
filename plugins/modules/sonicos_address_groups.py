@@ -138,6 +138,8 @@ def commit():
     url = url_base + "config/pending"
     res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
     msg = res.json()["status"]["info"][0]["message"]
+    # Debug
+    # module.fail_json(msg=res.json(), **result)
     if res.status_code != 200 or res.json()["status"]["success"] != True:
         module.fail_json(msg=msg, **result)
 
@@ -201,15 +203,22 @@ def get_json_params():
                 },
             )
 
-    if "ipv6" in group_member_address_object["address_object"] or "ipv6" in group_member_address_group["address_group"]:
+    if (
+        "ipv6" in group_member_address_object["address_object"]
+        or "mac" in group_member_address_object["address_object"]
+        or "fqdn" in group_member_address_object["address_object"]
+        or "ipv6" in group_member_address_group["address_group"]
+    ):
         group_type = "ipv6"
 
     json_params_helper = {
         group_type: {"name": module.params["group_name"]},
     }
 
-    json_params_helper[group_type].update(group_member_address_group)
-    json_params_helper[group_type].update(group_member_address_object)
+    if group_member_address_group != {"address_group": {}}:
+        json_params_helper[group_type].update(group_member_address_group)
+    if group_member_address_object != {"address_object": {}}:
+        json_params_helper[group_type].update(group_member_address_object)
 
     json_params["address_groups"].append(json_params_helper)
 
@@ -220,13 +229,14 @@ def get_json_params():
 
 def execute_api_call(url, json_params, address_group_action):
     match address_group_action:
-        case "patch":
-            res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "put":
+            res = requests.put(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
         case "post":
             res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
         case "delete":
-            res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+            res = requests.delete(url, auth=auth_params, verify=module.params["ssl_verify"])
     # Debug
+    # module.fail_json(msg=url, **result)
     # module.fail_json(msg=json_params, **result)
     # module.fail_json(msg=res.json(), **result)
     if res.status_code == 200:
@@ -271,6 +281,8 @@ def address_group():
 
         if "address_groups" in req.json():
             for item in req.json()["address_groups"]:
+                if address_group_action == "put":
+                    break
                 # Debug
                 # module.fail_json(msg=item, **result)
                 # module.fail_json(msg=json_params, **result)
@@ -279,14 +291,14 @@ def address_group():
                     continue
 
                 # Debug
-                # module.fail_json(msg=item, **result)
+                # module.fail_json(msg=json_params["address_groups"][0], **result)
 
                 if module.params["state"] == "present":
-                    address_group_action = "patch"
+                    address_group_action = "put"
+                    url_helper = ip_version
 
                 del item[ip_version]["uuid"]
 
-                compare_json(item, json_params["address_groups"][0])
                 # Debug
                 # module.fail_json(msg=item, **result)
 
@@ -295,17 +307,25 @@ def address_group():
                         address_group_action = "delete"
                         break
                     address_group_action = None
+                    break
 
     # Debug
     # module.fail_json(msg=address_group_action, **result)
 
-    # if address_group_action == "post":
-    #     url = url_address_groups + json_params["address_groups"].keys()
-    #     # Debug
-    #     module.fail_json(msg=url, **result)
+    if address_group_action == "post":
+        json_helper = json_params["address_groups"][0]
+        group_type = next(iter(json_helper))
+        url = url_address_groups + group_type
+
+    if address_group_action == "put":
+        url = url_address_groups + url_helper
+
+    if address_group_action == "delete":
+        url = url_address_groups + ip_version + "/name/" + module.params["group_name"]
 
     if address_group_action != None:
         # Debug
+        # module.fail_json(msg=url, **result)
         # module.fail_json(msg=address_group_action, **result)
         # module.fail_json(msg=json_params["address_groups"][0], **result)
         execute_api_call(url, json_params, address_group_action)
