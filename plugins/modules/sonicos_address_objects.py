@@ -271,7 +271,7 @@ def commit():
     url = url_base + "config/pending"
     res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
     msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
+    if res.status_code != 200 or res.json()["status"]["success"] != True:
         module.fail_json(msg=msg, **result)
 
 
