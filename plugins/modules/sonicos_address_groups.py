@@ -298,13 +298,13 @@ def compare_json(json1, json2):
 
 
 def address_group():
-    address_group_action = None
+    api_action = None
     json_params = get_json_params()
 
     ip_versions = ["ipv4", "ipv6"]
 
     if module.params["state"] == "present":
-        address_group_action = "post"
+        api_action = "post"
 
     for ip_version in ip_versions:
         url = url_address_groups + ip_version
@@ -312,45 +312,45 @@ def address_group():
 
         if "address_groups" in req.json():
             for item in req.json()["address_groups"]:
-                if address_group_action == "put":
+                if api_action == "put":
                     break
 
                 if item[ip_version]["name"] != module.params["group_name"]:
                     continue
 
                 if module.params["state"] == "present":
-                    address_group_action = "put"
+                    api_action = "put"
                     exist_group_type = ip_version
 
                 del item[ip_version]["uuid"]
 
                 if compare_json(item, json_params["address_groups"][0]) == True:
                     if module.params["state"] == "absent":
-                        address_group_action = "delete"
+                        api_action = "delete"
                         break
-                    address_group_action = None
+                    api_action = None
                     break
 
-    if address_group_action == "post":
+    if api_action == "post":
         json_helper = json_params["address_groups"][0]
         group_type = next(iter(json_helper))
         url = url_address_groups + group_type
 
-    if address_group_action == "put":
+    if api_action == "put":
         json_helper = json_params["address_groups"][0]
         group_type = next(iter(json_helper))
         json_params["address_groups"][0][exist_group_type] = json_params["address_groups"][0].pop(group_type)
         url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
 
-    if address_group_action == "delete":
+    if api_action == "delete":
         url = url_address_groups + ip_version + "/name/" + module.params["group_name"]
 
-    if address_group_action != None:
-        execute_api_call(url, json_params, address_group_action)
+    if api_action != None:
+        execute_api_call(url, json_params, api_action)
 
 
-def execute_api_call(url, json_params, address_group_action):
-    match address_group_action:
+def execute_api_call(url, json_params, api_action):
+    match api_action:
         case "put":
             res = requests.put(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
         case "post":

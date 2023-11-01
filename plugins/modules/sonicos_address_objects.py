@@ -311,8 +311,8 @@ def get_json_params(type):
     return json_params
 
 
-def execute_api_call(url, json_params, address_object_action):
-    match address_object_action:
+def execute_api_call(url, json_params, api_action):
+    match api_action:
         case "patch":
             res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
         case "post":
@@ -334,13 +334,13 @@ def address_object():
         type = module.params["object_type"]
 
     url = url_address_objects + type
-    address_object_action = None
+    api_action = None
 
     json_params = get_json_params(type)
     req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
 
     if module.params["state"] == "present":
-        address_object_action = "post"
+        api_action = "post"
 
     if "address_objects" in req.json():
         for item in req.json()["address_objects"]:
@@ -348,18 +348,18 @@ def address_object():
                 continue
 
             if module.params["state"] == "present":
-                address_object_action = "patch"
+                api_action = "patch"
 
             del item[type]["uuid"]
 
             if item == json_params["address_objects"][0]:
                 if module.params["state"] == "absent":
-                    address_object_action = "delete"
+                    api_action = "delete"
                     break
-                address_object_action = None
+                api_action = None
 
-    if address_object_action != None:
-        execute_api_call(url, json_params, address_object_action)
+    if api_action != None:
+        execute_api_call(url, json_params, api_action)
 
 
 # Defining the actual module actions
