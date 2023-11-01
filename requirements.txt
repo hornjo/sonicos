@@ -1,0 +1,4 @@
+requests
+fatten_json
+json
+urllib3

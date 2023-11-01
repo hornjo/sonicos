@@ -10,10 +10,10 @@ DOCUMENTATION = r"""
 ---
 module: sonicos_address_groups
 
-short_description: Manages all available featrues for address objects on SonicWALL
+short_description: Manages all available features for address groups on SonicWALL
 version_added: "1.0.0"
 description: 
-- This brings the capability to authenticate, manage all kinds of address objects and commits the changes
+- This brings the capability to authenticate, absolutly manage address groups and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
     hostname:
@@ -32,11 +32,28 @@ options:
         description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
-    # Enter missing parameters
-    state:
-        description: Defines whether a object should be present or absent. Default is present.
+    group_name:
+        description: The name for the group which will be worked with.
         required: true
-        type: str 
+        type: str
+    group_name:
+        description: The dictionary with the details of the group members.
+        required: true
+        type: list
+        member_name:
+            description: The name of member.
+            required: true
+            type: str
+        member_type:
+            description: The type of member.
+            required: true
+            type: str
+            choices: "host", "range", "network", "mac", "fqdn", "address_group"
+    state:
+        description: Defines whether the group should be present or absent. Default is present.
+        type: str
+        choices: "present", "absent"
+        default: "present"
 
 extends_documentation_fragment:
     - hornjo.sonicos.sonicos_documentation
@@ -47,12 +64,31 @@ author:
 """
 
 EXAMPLES = r"""
-- name: # Enter sample playboos
+- name: Creating an address group with mixed members. 
   hornjo.sonicos.sonicos_address_groups:
     hostname: 192.168.178.254
     username: admin
     password: password
     ssl_verify: false
+    group_name: Test_Group1
+    group_member: 
+      - {member_name: Test_Object, member_type: fqdn}
+      - {member_name: Test_Object2, member_type: host}
+      - {member_name: ipv6, member_type: range}
+      - {member_name: Test_Group2, member_type: address_group}
+    state: present
+
+- name: Deleting an address group with exact details of group and members.
+  hornjo.sonicos.sonicos_address_groups:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    ssl_verify: false
+    group_name: Test_Group2
+    group_member: 
+      - {member_name: Test_Object, member_type: fqdn}
+      - {member_name: Test_Object2, member_type: host}
+    state: absent
 
 
 
@@ -66,6 +102,39 @@ result:
     sample: {
         "changed": false,
         "failed": false,
+        "output": {
+            "address_groups": [
+                {
+                    "ipv6": {
+                        "address_group": {
+                            "ipv6": [
+                                {
+                                    "name": "Test_Group2"
+                                }
+                            ]
+                        },
+                        "address_object": {
+                            "fqdn": [
+                                {
+                                    "name": "Test_Object"
+                                }
+                            ],
+                            "ipv4": [
+                                {
+                                    "name": "Test_Object2"
+                                }
+                            ],
+                            "ipv6": [
+                                {
+                                    "name": "ipv6"
+                                }
+                            ]
+                        },
+                        "name": "Test_Group2"
+                    }
+                }
+            ]
+        }
     }
 """
 
@@ -88,8 +157,8 @@ module_args = dict(
     group_member=dict(
         type="list",
         required=True,
-        object_name=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"]),
-        object_type=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"]),
+        member_name=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"], required=True),
+        member_type=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"], required=True),
     ),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
@@ -104,9 +173,6 @@ result = dict(
 module = AnsibleModule(
     argument_spec=module_args,
     supports_check_mode=True,
-    required_if=[
-        #   ["object_type", "host", ["ip"]],
-    ],
 )
 
 # Defining global variables
@@ -138,13 +204,11 @@ def commit():
     url = url_base + "config/pending"
     res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
     msg = res.json()["status"]["info"][0]["message"]
-    # Debug
-    # module.fail_json(msg=res.json(), **result)
     if res.status_code != 200 or res.json()["status"]["success"] != True:
         module.fail_json(msg=msg, **result)
 
 
-def get_address_object_type(address_object_name, address_object_kind):
+def get_address_member_type(address_member_name, address_object_kind):
     type = "ipv4"
     url = url_address_groups + "ipv6"
 
@@ -155,11 +219,8 @@ def get_address_object_type(address_object_name, address_object_kind):
 
     flat_req = flatten(req.json())
 
-    # Debug
-    # module.fail_json(msg=flat_req, **result)
-
     for value in flat_req.values():
-        if address_object_name == value:
+        if address_member_name == value:
             type = "ipv6"
             break
 
@@ -173,32 +234,24 @@ def get_json_params():
     group_type = "ipv4"
 
     for item in module.params["group_member"]:
-        if item["object_type"] == "mac" or item["object_type"] == "fqdn":
-            type = item["object_type"]
+        if item["member_type"] == "mac" or item["member_type"] == "fqdn":
+            type = item["member_type"]
 
-        if item["object_type"] != "mac" and item["object_type"] != "fqdn":
-            type = get_address_object_type(item["object_name"], item["object_type"])
+        if item["member_type"] != "mac" and item["member_type"] != "fqdn":
+            type = get_address_member_type(item["member_name"], item["member_type"])
 
-        if item["object_type"] == "address_group":
-            try:
-                group_member_address_group["address_group"][type].append({"name": item["object_name"]})
-            except:
-                group_member_address_group["address_group"].update(
-                    {
-                        type: [
-                            {"name": item["object_name"]},
-                        ]
-                    }
-                )
-            continue
+        group_member_type = group_member_address_object["address_object"]
+
+        if item["member_type"] == "address_group":
+            group_member_type = group_member_address_group["address_group"]
 
         try:
-            group_member_address_object["address_object"][type].append({"name": item["object_name"]})
+            group_member_type[type].append({"name": item["member_name"]})
         except:
-            group_member_address_object["address_object"].update(
+            group_member_type.update(
                 {
                     type: [
-                        {"name": item["object_name"]},
+                        {"name": item["member_name"]},
                     ]
                 },
             )
@@ -217,33 +270,13 @@ def get_json_params():
 
     if group_member_address_group != {"address_group": {}}:
         json_params_helper[group_type].update(group_member_address_group)
+
     if group_member_address_object != {"address_object": {}}:
         json_params_helper[group_type].update(group_member_address_object)
 
     json_params["address_groups"].append(json_params_helper)
 
-    # Debug
-    # module.fail_json(msg=json_params_helper, **result)
     return json_params
-
-
-def execute_api_call(url, json_params, address_group_action):
-    match address_group_action:
-        case "put":
-            res = requests.put(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "post":
-            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "delete":
-            res = requests.delete(url, auth=auth_params, verify=module.params["ssl_verify"])
-    # Debug
-    # module.fail_json(msg=url, **result)
-    # module.fail_json(msg=json_params, **result)
-    # module.fail_json(msg=res.json(), **result)
-    if res.status_code == 200:
-        result["changed"] = True
-        return
-    msg = res.json()["status"]["info"][0]["message"]
-    module.fail_json(msg=msg, **result)
 
 
 def sort_json(json_data):
@@ -276,31 +309,20 @@ def address_group():
     for ip_version in ip_versions:
         url = url_address_groups + ip_version
         req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
-        # Debug
-        # module.fail_json(msg=req.json(), **result)
 
         if "address_groups" in req.json():
             for item in req.json()["address_groups"]:
                 if address_group_action == "put":
                     break
-                # Debug
-                # module.fail_json(msg=item, **result)
-                # module.fail_json(msg=json_params, **result)
 
                 if item[ip_version]["name"] != module.params["group_name"]:
                     continue
 
-                # Debug
-                # module.fail_json(msg=json_params["address_groups"][0], **result)
-
                 if module.params["state"] == "present":
                     address_group_action = "put"
-                    url_helper = ip_version
+                    exist_group_type = ip_version
 
                 del item[ip_version]["uuid"]
-
-                # Debug
-                # module.fail_json(msg=item, **result)
 
                 if compare_json(item, json_params["address_groups"][0]) == True:
                     if module.params["state"] == "absent":
@@ -309,26 +331,39 @@ def address_group():
                     address_group_action = None
                     break
 
-    # Debug
-    # module.fail_json(msg=address_group_action, **result)
-
     if address_group_action == "post":
         json_helper = json_params["address_groups"][0]
         group_type = next(iter(json_helper))
         url = url_address_groups + group_type
 
     if address_group_action == "put":
-        url = url_address_groups + url_helper
+        json_helper = json_params["address_groups"][0]
+        group_type = next(iter(json_helper))
+        json_params["address_groups"][0][exist_group_type] = json_params["address_groups"][0].pop(group_type)
+        url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
 
     if address_group_action == "delete":
         url = url_address_groups + ip_version + "/name/" + module.params["group_name"]
 
     if address_group_action != None:
-        # Debug
-        # module.fail_json(msg=url, **result)
-        # module.fail_json(msg=address_group_action, **result)
-        # module.fail_json(msg=json_params["address_groups"][0], **result)
         execute_api_call(url, json_params, address_group_action)
+
+
+def execute_api_call(url, json_params, address_group_action):
+    match address_group_action:
+        case "put":
+            res = requests.put(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "post":
+            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "delete":
+            res = requests.delete(url, auth=auth_params, verify=module.params["ssl_verify"])
+
+    if res.status_code == 200:
+        result["changed"] = True
+        result["output"] = json_params
+        return
+    msg = res.json()["status"]["info"][0]["message"]
+    module.fail_json(msg=msg, **result)
 
 
 # Defining the actual module actions

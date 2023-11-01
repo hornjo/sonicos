@@ -10,7 +10,7 @@ DOCUMENTATION = r"""
 ---
 module: sonicos_address_objects
 
-short_description: Manages all available featrues for address objects on SonicWALL
+short_description: Manages all available features for address objects on SonicWALL
 version_added: "1.0.0"
 description: 
 - This brings the capability to authenticate, manage all kinds of address objects and commits the changes
@@ -86,8 +86,9 @@ options:
         type: bool 
     state:
         description: Defines whether a object should be present or absent. Default is present.
-        required: true
-        type: str 
+        type: str
+        choices: "present", "absent"
+        default: "present"
 
 extends_documentation_fragment:
     - hornjo.sonicos.sonicos_documentation
@@ -307,8 +308,6 @@ def get_json_params(type):
         case "fqdn":
             dict_object_type["domain"] = module.params["fqdn"]
 
-    result["output"] = json_params["address_objects"][0]
-
     return json_params
 
 
@@ -322,6 +321,7 @@ def execute_api_call(url, json_params, address_object_action):
             res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
     if res.status_code == 200:
         result["changed"] = True
+        result["output"] = json_params
         return
     msg = res.json()["status"]["info"][0]["message"]
     module.fail_json(msg=msg, **result)
