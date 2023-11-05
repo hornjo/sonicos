@@ -8,12 +8,12 @@ __metaclass__ = type
 
 DOCUMENTATION = r"""
 ---
-module: sonicos_service_objects
+module: sonicos_service_groups
 
-short_description: Manages all available features for service objects on SonicWALL
+short_description: Manages all available features for service groups on SonicWALL
 version_added: "1.0.0"
 description: 
-- This brings the capability to authenticate, absolutly manage service objects and commits the changes
+- This brings the capability to authenticate, absolutly manage service groups and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
     hostname:
@@ -32,31 +32,23 @@ options:
         description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
-    object_name:
-        description: Name of the service object.
+    group_name:
+        description: The name for the group which will be worked with.
         required: true
         type: str
-    protocol:
-        description: Protocol which should be used in the service object.
+    group_member:
+        description: The dictionary with the details of the group members.
         required: true
-        type: str
-    begin:
-        description: Defining the begin of a port range, only requiered with tcp and udp.
-        required: false
-        type: int
-    end:
-        description: Defining the end of a port range, only requiered with tcp and udp.
-        required: false
-        type: int
-    sub_type:
-        description: Defining the sub type for certain protocols. They Either are none by default or exactly accroding to the predefined ones by sonicwall.
-        required: false
-        default: "none"
-        type: str
-    custom_protocol:
-        description: Defining the number of the custom protocol. Can be only between 1-255.
-        required: false
-        type: int
+        type: list
+        member_name:
+            description: The name of member.
+            required: true
+            type: str
+        member_type:
+            description: The type of member.
+            required: true
+            type: str
+            choices: "service_object", "service_group"
     state:
         description: Defines whether the service object should be present or absent. Default is present.
         type: str
@@ -69,40 +61,30 @@ author:
 """
 
 EXAMPLES = r"""
-- name: Creating IGMP service object.
-  hornjo.sonicos.sonicos_service_objects:
+- name: Creating service group.
+  hornjo.sonicos.sonicos_service_groups:
     hostname: 192.168.178.254
     username: admin
     password: password
-    object_name: Test2
-    protocol: igmp
-    sub_type: v2-member-report
+    group_name: ServiceGroup1
+    group_member: 
+      - {member_name: HTTP, member_type: service_object}
+      - {member_name: HTTPS, member_type: service_object}
+      - {member_name: AD Directory Services, member_type: service_group}
+    state: present
+    
+- name: Deleting service group.
+  hornjo.sonicos.sonicos_service_groups:
+    hostname: 192.168.178.254
+    username: admin
+    password: password
+    group_name: ServiceGroup2
+    group_member: 
+      - {member_name: MS SQL, member_type: service_object}
+      - {member_name: ServiceGroup1, member_type: service_group}
     state: present
 
-- name: Deleting UDP service object
-  hornjo.sonicos.sonicos_service_objects:
-    hostname: 192.168.178.254
-    username: admin
-    password: password
-    ssl_verify: false
-    object_name: TestObject1
-    protocol: udp
-    begin: 8080
-    end: 8081
-    state: absent
-
-- name: Creating custom service object.
-  hornjo.sonicos.sonicos_service_objects:
-    hostname: 192.168.178.254
-    username: admin
-    password: password
-    ssl_verify: false
-    object_name: CustomTest
-    protocol: custom
-    custom_protocol: 255
-    state: present
-
-
+    
 
 """
 
@@ -115,10 +97,22 @@ result:
         "changed": false,
         "failed": false,
         "output": {
-            "service_objects": [
+            "service_groups": [
                 {
-                    "name": "Test3",
-                    "ospf": "link-state-update"
+                    "name": "ServiceGroup1",
+                    "service_group": [
+                        {
+                            "name": "AD Directory Services"
+                        }
+                    ],
+                    "service_object": [
+                        {
+                            "name": "HTTP"
+                        },
+                        {
+                            "name": "HTTPS"
+                        }
+                    ]
                 }
             ]
         }
@@ -129,6 +123,7 @@ result:
 # Importing needed libraries
 import requests
 import urllib3
+import json
 from ansible.module_utils.basic import AnsibleModule
 
 
@@ -138,12 +133,13 @@ module_args = dict(
     username=dict(type="str", required=True),
     password=dict(type="str", required=True, no_log=True),
     ssl_verify=dict(type="bool", default=True),
-    object_name=dict(type="str", required=True),
-    protocol=dict(type="str", choices=["custom", "icmp", "igmp", "tcp", "udp", "gre", "esp", "6over4", "ah", "icmpv6", "eigrp", "ospf", "pim", "l2tp"], required=True),
-    begin=dict(type="int", required=False),
-    end=dict(type="int", required=False),
-    sub_type=dict(type="str", default="none", required=False),
-    custom_protocol=dict(type="int", required=False),
+    group_name=dict(type="str", required=True),
+    group_member=dict(
+        type="list",
+        required=True,
+        member_name=dict(type="str", required=True),
+        member_type=dict(type="str", choices=["service_object", "service_group"], required=True),
+    ),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
 
@@ -157,16 +153,6 @@ result = dict(
 module = AnsibleModule(
     argument_spec=module_args,
     supports_check_mode=True,
-    required_if=[
-        ["protocol", "custom", ["custom_protocol"]],
-        ["protocol", "icmp", ["sub_type"]],
-        ["protocol", "igmp", ["sub_type"]],
-        ["protocol", "tcp", ["begin"] + ["end"]],
-        ["protocol", "udp", ["begin"] + ["end"]],
-        ["protocol", "icmpv6", ["sub_type"]],
-        ["protocol", "ospf", ["sub_type"]],
-        ["protocol", "pim", ["sub_type"]],
-    ],
 )
 
 # Defining global variables
@@ -202,26 +188,48 @@ def commit():
 
 
 def get_json_params():
-    json_params = {"service_objects": []}
-    json_helper = {"name": module.params["object_name"], module.params["protocol"]: True}
+    json_params = {"service_groups": [{"name": module.params["group_name"]}]}
+    json_member_group = {"service_group": []}
+    json_member_object = {"service_object": []}
 
-    if module.params["protocol"] == "tcp" or module.params["protocol"] == "udp":
-        json_helper = {"name": module.params["object_name"], module.params["protocol"]: {"begin": module.params["begin"], "end": module.params["end"]}}
+    for item in module.params["group_member"]:
+        json_member_type = json_member_object["service_object"]
 
-    if module.params["protocol"] == "icmp" or module.params["protocol"] == "igmp" or module.params["protocol"] == "icmpv6" or module.params["protocol"] == "ospf" or module.params["protocol"] == "pim":
-        json_helper = {"name": module.params["object_name"], module.params["protocol"]: module.params["sub_type"].lower()}
+        if item["member_type"] == "service_group":
+            json_member_type = json_member_group["service_group"]
 
-    if module.params["custom_protocol"] != None:
-        json_helper = {"name": module.params["object_name"], module.params["protocol"]: module.params["custom_protocol"]}
+        json_member_type.append({"name": item["member_name"]})
 
-    json_params["service_objects"].append(json_helper)
+    if json_member_group != {"service_group": []}:
+        json_params["service_groups"][0].update(json_member_group)
+
+    if json_member_object != {"service_object": []}:
+        json_params["service_groups"][0].update(json_member_object)
 
     return json_params
 
 
-def service_objects():
+def sort_json(json_data):
+    if isinstance(json_data, dict):
+        return {key: sort_json(value) for key, value in json_data.items()}
+    elif isinstance(json_data, list):
+        if all(isinstance(item, dict) for item in json_data):
+            return sorted(json_data, key=lambda x: json.dumps(sort_json(x), sort_keys=True))
+        else:
+            return sorted(json_data)
+    else:
+        return json_data
+
+
+def compare_json(json1, json2):
+    sorted_json1 = sort_json(json1)
+    sorted_json2 = sort_json(json2)
+    return sorted_json1 == sorted_json2
+
+
+def service_groups():
     api_action = None
-    url = url_base + "service-objects"
+    url = url_base + "service-groups"
     json_params = get_json_params()
 
     if module.params["state"] == "present":
@@ -229,21 +237,24 @@ def service_objects():
 
     req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
 
-    if "service_objects" in req.json():
-        for item in req.json()["service_objects"]:
-            if item["name"] != module.params["object_name"]:
+    if "service_groups" in req.json():
+        for item in req.json()["service_groups"]:
+            if item["name"] != module.params["group_name"]:
                 continue
 
             if module.params["state"] == "present":
-                api_action = "patch"
+                api_action = "put"
 
             del item["uuid"]
 
-            if item == json_params["service_objects"][0]:
+            if compare_json(item, json_params["service_groups"][0]) == True:
                 if module.params["state"] == "absent":
                     api_action = "delete"
                     break
                 api_action = None
+
+    if api_action == "put" or api_action == "delete":
+        url = url_base + "service-groups" + "/name/" + module.params["group_name"]
 
     if api_action != None:
         execute_api_call(url, json_params, api_action)
@@ -251,12 +262,12 @@ def service_objects():
 
 def execute_api_call(url, json_params, api_action):
     match api_action:
-        case "patch":
-            res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "put":
+            res = requests.put(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
         case "post":
             res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
         case "delete":
-            res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+            res = requests.delete(url, auth=auth_params, verify=module.params["ssl_verify"])
     if res.status_code == 200:
         result["changed"] = True
         result["output"] = json_params
@@ -272,7 +283,7 @@ def main():
 
     authentication()
 
-    service_objects()
+    service_groups()
 
     commit()
 
