@@ -36,7 +36,7 @@ options:
         description: The name for the group which will be worked with.
         required: true
         type: str
-    group_name:
+    group_member:
         description: The dictionary with the details of the group members.
         required: true
         type: list
@@ -154,7 +154,7 @@ module_args = dict(
     group_member=dict(
         type="list",
         required=True,
-        member_name=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"], required=True),
+        member_name=dict(type="str", required=True),
         member_type=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"], required=True),
     ),
     state=dict(type="str", choices=["present", "absent"], default="present"),
@@ -226,8 +226,8 @@ def get_address_member_type(address_member_name, address_object_kind):
 
 def get_json_params():
     json_params = {"address_groups": []}
-    group_member_address_group = {"address_group": {}}
-    group_member_address_object = {"address_object": {}}
+    json_member_group = {"address_group": {}}
+    json_member_object = {"address_object": {}}
     group_type = "ipv4"
 
     for item in module.params["group_member"]:
@@ -237,15 +237,15 @@ def get_json_params():
         if item["member_type"] != "mac" and item["member_type"] != "fqdn":
             type = get_address_member_type(item["member_name"], item["member_type"])
 
-        group_member_type = group_member_address_object["address_object"]
+        json_member_type = json_member_object["address_object"]
 
         if item["member_type"] == "address_group":
-            group_member_type = group_member_address_group["address_group"]
+            json_member_type = json_member_group["address_group"]
 
         try:
-            group_member_type[type].append({"name": item["member_name"]})
+            json_member_type[type].append({"name": item["member_name"]})
         except:
-            group_member_type.update(
+            json_member_type.update(
                 {
                     type: [
                         {"name": item["member_name"]},
@@ -254,10 +254,10 @@ def get_json_params():
             )
 
     if (
-        "ipv6" in group_member_address_object["address_object"]
-        or "mac" in group_member_address_object["address_object"]
-        or "fqdn" in group_member_address_object["address_object"]
-        or "ipv6" in group_member_address_group["address_group"]
+        "ipv6" in json_member_object["address_object"]
+        or "mac" in json_member_object["address_object"]
+        or "fqdn" in json_member_object["address_object"]
+        or "ipv6" in json_member_group["address_group"]
     ):
         group_type = "ipv6"
 
@@ -265,11 +265,11 @@ def get_json_params():
         group_type: {"name": module.params["group_name"]},
     }
 
-    if group_member_address_group != {"address_group": {}}:
-        json_params_helper[group_type].update(group_member_address_group)
+    if json_member_group != {"address_group": {}}:
+        json_params_helper[group_type].update(json_member_group)
 
-    if group_member_address_object != {"address_object": {}}:
-        json_params_helper[group_type].update(group_member_address_object)
+    if json_member_object != {"address_object": {}}:
+        json_params_helper[group_type].update(json_member_object)
 
     json_params["address_groups"].append(json_params_helper)
 
