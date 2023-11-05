@@ -90,8 +90,6 @@ options:
         choices: "present", "absent"
         default: "present"
 
-extends_documentation_fragment:
-    - hornjo.sonicos.sonicos_documentation
 
 author:
     - Johannes Horn (@hornjo)
@@ -311,22 +309,6 @@ def get_json_params(type):
     return json_params
 
 
-def execute_api_call(url, json_params, api_action):
-    match api_action:
-        case "patch":
-            res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "post":
-            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "delete":
-            res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-    if res.status_code == 200:
-        result["changed"] = True
-        result["output"] = json_params
-        return
-    msg = res.json()["status"]["info"][0]["message"]
-    module.fail_json(msg=msg, **result)
-
-
 def address_object():
     type = module.params["ip_version"]
 
@@ -360,6 +342,22 @@ def address_object():
 
     if api_action != None:
         execute_api_call(url, json_params, api_action)
+
+
+def execute_api_call(url, json_params, api_action):
+    match api_action:
+        case "patch":
+            res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "post":
+            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+        case "delete":
+            res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
+    if res.status_code == 200:
+        result["changed"] = True
+        result["output"] = json_params
+        return
+    msg = res.json()["status"]["info"][0]["message"]
+    module.fail_json(msg=msg, **result)
 
 
 # Defining the actual module actions

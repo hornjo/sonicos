@@ -55,9 +55,6 @@ options:
         choices: "present", "absent"
         default: "present"
 
-extends_documentation_fragment:
-    - hornjo.sonicos.sonicos_documentation
-
 author:
     - Johannes Horn (@hornjo)
     - Marco Fuchs (@FuxMak)
