@@ -90,8 +90,6 @@ options:
         choices: "present", "absent"
         default: "present"
 
-extends_documentation_fragment:
-    - hornjo.sonicos.sonicos_documentation
 
 author:
     - Johannes Horn (@hornjo)
@@ -311,8 +309,43 @@ def get_json_params(type):
     return json_params
 
 
-def execute_api_call(url, json_params, address_object_action):
-    match address_object_action:
+def address_object():
+    type = module.params["ip_version"]
+
+    if module.params["object_type"] == "mac" or module.params["object_type"] == "fqdn":
+        type = module.params["object_type"]
+
+    url = url_address_objects + type
+    api_action = None
+
+    json_params = get_json_params(type)
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+
+    if module.params["state"] == "present":
+        api_action = "post"
+
+    if "address_objects" in req.json():
+        for item in req.json()["address_objects"]:
+            if item[type]["name"] != module.params["object_name"]:
+                continue
+
+            if module.params["state"] == "present":
+                api_action = "patch"
+
+            del item[type]["uuid"]
+
+            if item == json_params["address_objects"][0]:
+                if module.params["state"] == "absent":
+                    api_action = "delete"
+                    break
+                api_action = None
+
+    if api_action != None:
+        execute_api_call(url, json_params, api_action)
+
+
+def execute_api_call(url, json_params, api_action):
+    match api_action:
         case "patch":
             res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
         case "post":
@@ -325,41 +358,6 @@ def execute_api_call(url, json_params, address_object_action):
         return
     msg = res.json()["status"]["info"][0]["message"]
     module.fail_json(msg=msg, **result)
-
-
-def address_object():
-    type = module.params["ip_version"]
-
-    if module.params["object_type"] == "mac" or module.params["object_type"] == "fqdn":
-        type = module.params["object_type"]
-
-    url = url_address_objects + type
-    address_object_action = None
-
-    json_params = get_json_params(type)
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
-
-    if module.params["state"] == "present":
-        address_object_action = "post"
-
-    if "address_objects" in req.json():
-        for item in req.json()["address_objects"]:
-            if item[type]["name"] != module.params["object_name"]:
-                continue
-
-            if module.params["state"] == "present":
-                address_object_action = "patch"
-
-            del item[type]["uuid"]
-
-            if item == json_params["address_objects"][0]:
-                if module.params["state"] == "absent":
-                    address_object_action = "delete"
-                    break
-                address_object_action = None
-
-    if address_object_action != None:
-        execute_api_call(url, json_params, address_object_action)
 
 
 # Defining the actual module actions
