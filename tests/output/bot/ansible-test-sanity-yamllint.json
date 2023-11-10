@@ -1,0 +1,10 @@
+{
+    "docs": "https://docs.ansible.com/ansible-core/2.15/dev_guide/testing/sanity/yamllint.html", 
+    "results": [
+        {
+            "message": "The test `ansible-test sanity --test yamllint` [[explain](https://docs.ansible.com/ansible-core/2.15/dev_guide/testing/sanity/yamllint.html)] failed with 12 errors:", 
+            "output": "plugins/modules/sonicos_address_groups.py:51:28: error: DOCUMENTATION: syntax error: expected <block end>, but found ',' (syntax)\nplugins/modules/sonicos_address_groups.py:51:28: unparsable-with-libyaml: while parsing a block mapping - did not find expected key\nplugins/modules/sonicos_address_objects.py:90:27: error: DOCUMENTATION: syntax error: expected <block end>, but found ',' (syntax)\nplugins/modules/sonicos_address_objects.py:90:27: unparsable-with-libyaml: while parsing a block mapping - did not find expected key\nplugins/modules/sonicos_address_objects.py:189:1: error: RETURN: syntax error: expected ',' or '}', but got '<stream end>' (syntax)\nplugins/modules/sonicos_address_objects.py:189:1: unparsable-with-libyaml: while parsing a flow mapping - did not find expected ',' or '}'\nplugins/modules/sonicos_service_groups.py:51:38: error: DOCUMENTATION: syntax error: expected <block end>, but found ',' (syntax)\nplugins/modules/sonicos_service_groups.py:51:38: unparsable-with-libyaml: while parsing a block mapping - did not find expected key\nplugins/modules/sonicos_service_objects.py:63:27: error: DOCUMENTATION: syntax error: expected <block end>, but found ',' (syntax)\nplugins/modules/sonicos_service_objects.py:63:27: unparsable-with-libyaml: while parsing a block mapping - did not find expected key\nplugins/modules/sonicos_zones.py:42:27: error: DOCUMENTATION: syntax error: expected <block end>, but found ',' (syntax)\nplugins/modules/sonicos_zones.py:42:27: unparsable-with-libyaml: while parsing a block mapping - did not find expected key"
+        }
+    ], 
+    "verified": false
+}

@@ -1,0 +1,10 @@
+{
+    "docs": "https://docs.ansible.com/ansible-core/2.15/dev_guide/testing/sanity/shebang.html", 
+    "results": [
+        {
+            "message": "The test `ansible-test sanity --test shebang` [[explain](https://docs.ansible.com/ansible-core/2.15/dev_guide/testing/sanity/shebang.html)] failed with 1 error:", 
+            "output": "plugins/module_utils/sonicos_core_functions.py:1:1: unexpected non-module shebang: b'#!/usr/bin/python'"
+        }
+    ], 
+    "verified": false
+}

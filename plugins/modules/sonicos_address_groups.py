@@ -139,9 +139,9 @@ result:
 # Importing needed libraries
 import requests
 import urllib3
-import json
 from flatten_json import flatten
 from ansible.module_utils.basic import AnsibleModule
+from ..module_utils.sonicos_core_functions import authentication, commit, execute_api, compare_json
 
 
 # Defining module arguments
@@ -179,32 +179,6 @@ auth_params = (module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
-def authentication():
-    url = url_base + "auth"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-    if res.json()["status"]["info"][0]["config_mode"] == "No":
-        configmode()
-
-
-def configmode():
-    url = url_base + "config-mode"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-
-
-def commit():
-    url = url_base + "config/pending"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200 or res.json()["status"]["success"] != True:
-        module.fail_json(msg=msg, **result)
-
-
 def get_address_member_type(address_member_name, address_object_kind):
     type = "ipv4"
     url = url_address_groups + "ipv6"
@@ -276,24 +250,6 @@ def get_json_params():
     return json_params
 
 
-def sort_json(json_data):
-    if isinstance(json_data, dict):
-        return {key: sort_json(value) for key, value in json_data.items()}
-    elif isinstance(json_data, list):
-        if all(isinstance(item, dict) for item in json_data):
-            return sorted(json_data, key=lambda x: json.dumps(sort_json(x), sort_keys=True))
-        else:
-            return sorted(json_data)
-    else:
-        return json_data
-
-
-def compare_json(json1, json2):
-    sorted_json1 = sort_json(json1)
-    sorted_json2 = sort_json(json2)
-    return sorted_json1 == sorted_json2
-
-
 def address_group():
     api_action = None
     json_params = get_json_params()
@@ -324,6 +280,7 @@ def address_group():
                 if compare_json(item, json_params["address_groups"][0]) == True:
                     if module.params["state"] == "absent":
                         api_action = "delete"
+                        exist_group_type = ip_version
                         break
                     api_action = None
                     break
@@ -340,27 +297,10 @@ def address_group():
         url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
 
     if api_action == "delete":
-        url = url_address_groups + ip_version + "/name/" + module.params["group_name"]
+        url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
 
     if api_action != None:
-        execute_api_call(url, json_params, api_action)
-
-
-def execute_api_call(url, json_params, api_action):
-    match api_action:
-        case "put":
-            res = requests.put(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "post":
-            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "delete":
-            res = requests.delete(url, auth=auth_params, verify=module.params["ssl_verify"])
-
-    if res.status_code == 200:
-        result["changed"] = True
-        result["output"] = json_params
-        return
-    msg = res.json()["status"]["info"][0]["message"]
-    module.fail_json(msg=msg, **result)
+        execute_api(url, json_params, api_action, auth_params, module, result)
 
 
 # Defining the actual module actions
@@ -368,11 +308,11 @@ def main():
     if module.params["ssl_verify"] == False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    authentication()
+    authentication(url_base, auth_params, module, result)
 
     address_group()
 
-    commit()
+    commit(url_base, auth_params, module, result)
 
     module.exit_json(**result)
 

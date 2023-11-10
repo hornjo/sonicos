@@ -79,7 +79,7 @@ EXAMPLES = r"""
     sub_type: v2-member-report
     state: present
 
-- name: Deleting UDP service object
+- name: Deleting UDP service object.
   hornjo.sonicos.sonicos_service_objects:
     hostname: 192.168.178.254
     username: admin
