@@ -1,2 +1,2 @@
-# Ignore cache files
+# Ignore cache file
 plugins/modules/__pycache__
