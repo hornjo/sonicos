@@ -1,3 +1,2 @@
-# Ignorring local testing playbook and config
-playbook.yml
-ansible.cfg
+# Ignore cache file
+plugins/modules/__pycache__

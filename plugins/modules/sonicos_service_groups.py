@@ -12,7 +12,7 @@ module: sonicos_service_groups
 
 short_description: Manages all available features for service groups on SonicWALL
 version_added: "1.0.0"
-description: 
+description:
 - This brings the capability to authenticate, absolutly manage service groups and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
@@ -40,15 +40,15 @@ options:
         description: The dictionary with the details of the group members.
         required: true
         type: list
-        member_name:
-            description: The name of member.
-            required: true
-            type: str
-        member_type:
-            description: The type of member.
-            required: true
-            type: str
-            choices: "service_object", "service_group"
+            - member_name:
+                description: The name of member.
+                required: true
+                type: str
+            - member_type:
+                description: The type of member.
+                required: true
+                type: str
+                choices: "service_object", "service_group"
     state:
         description: Defines whether the service object should be present or absent. Default is present.
         type: str
@@ -67,24 +67,24 @@ EXAMPLES = r"""
     username: admin
     password: password
     group_name: ServiceGroup1
-    group_member: 
+    group_member:
       - {member_name: HTTP, member_type: service_object}
       - {member_name: HTTPS, member_type: service_object}
       - {member_name: AD Directory Services, member_type: service_group}
     state: present
-    
+
+
 - name: Deleting service group.
   hornjo.sonicos.sonicos_service_groups:
     hostname: 192.168.178.254
     username: admin
     password: password
     group_name: ServiceGroup2
-    group_member: 
+    group_member:
       - {member_name: MS SQL, member_type: service_object}
       - {member_name: ServiceGroup1, member_type: service_group}
     state: present
 
-    
 
 """
 
@@ -123,8 +123,8 @@ result:
 # Importing needed libraries
 import requests
 import urllib3
-import json
 from ansible.module_utils.basic import AnsibleModule
+from ..module_utils.sonicos_core_functions import authentication, commit, execute_api, compare_json
 
 
 # Defining module arguments
@@ -161,32 +161,6 @@ auth_params = (module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
-def authentication():
-    url = url_base + "auth"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-    if res.json()["status"]["info"][0]["config_mode"] == "No":
-        configmode()
-
-
-def configmode():
-    url = url_base + "config-mode"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-
-
-def commit():
-    url = url_base + "config/pending"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200 or res.json()["status"]["success"] != True:
-        module.fail_json(msg=msg, **result)
-
-
 def get_json_params():
     json_params = {"service_groups": [{"name": module.params["group_name"]}]}
     json_member_group = {"service_group": []}
@@ -209,24 +183,6 @@ def get_json_params():
     return json_params
 
 
-def sort_json(json_data):
-    if isinstance(json_data, dict):
-        return {key: sort_json(value) for key, value in json_data.items()}
-    elif isinstance(json_data, list):
-        if all(isinstance(item, dict) for item in json_data):
-            return sorted(json_data, key=lambda x: json.dumps(sort_json(x), sort_keys=True))
-        else:
-            return sorted(json_data)
-    else:
-        return json_data
-
-
-def compare_json(json1, json2):
-    sorted_json1 = sort_json(json1)
-    sorted_json2 = sort_json(json2)
-    return sorted_json1 == sorted_json2
-
-
 def service_groups():
     api_action = None
     url = url_base + "service-groups"
@@ -247,7 +203,6 @@ def service_groups():
 
             del item["uuid"]
 
-            if compare_json(item, json_params["service_groups"][0]) == True:
                 if module.params["state"] == "absent":
                     api_action = "delete"
                     break
@@ -256,36 +211,21 @@ def service_groups():
     if api_action == "put" or api_action == "delete":
         url = url_base + "service-groups" + "/name/" + module.params["group_name"]
 
-    if api_action != None:
-        execute_api_call(url, json_params, api_action)
-
-
-def execute_api_call(url, json_params, api_action):
-    match api_action:
-        case "put":
-            res = requests.put(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "post":
-            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "delete":
-            res = requests.delete(url, auth=auth_params, verify=module.params["ssl_verify"])
-    if res.status_code == 200:
-        result["changed"] = True
-        result["output"] = json_params
-        return
-    msg = res.json()["status"]["info"][0]["message"]
-    module.fail_json(msg=msg, **result)
+    if api_action is not None:
+        execute_api(url, json_params, api_action, auth_params, module, result)
 
 
 # Defining the actual module actions
 def main():
-    if module.params["ssl_verify"] == False:
+    if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    authentication()
+    authentication(url_base, auth_params, module, result)
 
     service_groups()
 
-    commit()
+    commit(url_base, auth_params, module, result)
+
 
     module.exit_json(**result)
 

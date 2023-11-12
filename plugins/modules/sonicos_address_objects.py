@@ -12,7 +12,7 @@ module: sonicos_address_objects
 
 short_description: Manages all available features for address objects on SonicWALL
 version_added: "1.0.0"
-description: 
+description:
 - This brings the capability to authenticate, manage all kinds of address objects and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
@@ -79,11 +79,11 @@ options:
     mac:
         description: Mac address of the address object when mac is used. Supported types are with/without colons and lowercase/uppercase.
         required: false
-        type: str 
+        type: str
     multi_homed:
         description: Defines whether a mac addres can be multi homed or not. Default is true.
         required: false
-        type: bool 
+        type: bool
     state:
         description: Defines whether a object should be present or absent. Default is present.
         type: str
@@ -192,6 +192,7 @@ result:
 # Importing needed libraries
 import requests
 import urllib3
+from ..module_utils.sonicos_core_functions import authentication, commit, execute_api
 from ansible.module_utils.basic import AnsibleModule
 
 
@@ -248,32 +249,6 @@ auth_params = (module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
-def authentication():
-    url = url_base + "auth"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-    if res.json()["status"]["info"][0]["config_mode"] == "No":
-        configmode()
-
-
-def configmode():
-    url = url_base + "config-mode"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-
-
-def commit():
-    url = url_base + "config/pending"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200 or res.json()["status"]["success"] != True:
-        module.fail_json(msg=msg, **result)
-
-
 def get_json_params(type):
     json_params = {
         "address_objects": [
@@ -340,36 +315,23 @@ def address_object():
                     break
                 api_action = None
 
-    if api_action != None:
-        execute_api_call(url, json_params, api_action)
+    if api_action == "put" or api_action == "delete":
+        url = url_base + "address-objects/" + type + "/name/" + module.params["object_name"]
 
-
-def execute_api_call(url, json_params, api_action):
-    match api_action:
-        case "patch":
-            res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "post":
-            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "delete":
-            res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-    if res.status_code == 200:
-        result["changed"] = True
-        result["output"] = json_params
-        return
-    msg = res.json()["status"]["info"][0]["message"]
-    module.fail_json(msg=msg, **result)
+    if api_action is not None:
+        execute_api(url, json_params, api_action, auth_params, module, result)
 
 
 # Defining the actual module actions
 def main():
-    if module.params["ssl_verify"] == False:
+    if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    authentication()
+    authentication(url_base, auth_params, module, result)
 
     address_object()
 
-    commit()
+    commit(url_base, auth_params, module, result)
 
     module.exit_json(**result)
 

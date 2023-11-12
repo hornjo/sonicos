@@ -12,7 +12,7 @@ module: sonicos_service_objects
 
 short_description: Manages all available features for service objects on SonicWALL
 version_added: "1.0.0"
-description: 
+description:
 - This brings the capability to authenticate, absolutly manage service objects and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
@@ -79,7 +79,7 @@ EXAMPLES = r"""
     sub_type: v2-member-report
     state: present
 
-- name: Deleting UDP service object
+- name: Deleting UDP service object.
   hornjo.sonicos.sonicos_service_objects:
     hostname: 192.168.178.254
     username: admin
@@ -129,6 +129,7 @@ result:
 # Importing needed libraries
 import requests
 import urllib3
+from ..module_utils.sonicos_core_functions import authentication, commit, execute_api
 from ansible.module_utils.basic import AnsibleModule
 
 
@@ -139,7 +140,11 @@ module_args = dict(
     password=dict(type="str", required=True, no_log=True),
     ssl_verify=dict(type="bool", default=True),
     object_name=dict(type="str", required=True),
-    protocol=dict(type="str", choices=["custom", "icmp", "igmp", "tcp", "udp", "gre", "esp", "6over4", "ah", "icmpv6", "eigrp", "ospf", "pim", "l2tp"], required=True),
+    protocol=dict(
+        type="str",
+        choices=["custom", "icmp", "igmp", "tcp", "udp", "gre", "esp", "6over4", "ah", "icmpv6", "eigrp", "ospf", "pim", "l2tp"],
+        required=True,
+    ),
     begin=dict(type="int", required=False),
     end=dict(type="int", required=False),
     sub_type=dict(type="str", default="none", required=False),
@@ -175,32 +180,6 @@ auth_params = (module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
-def authentication():
-    url = url_base + "auth"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-    if res.json()["status"]["info"][0]["config_mode"] == "No":
-        configmode()
-
-
-def configmode():
-    url = url_base + "config-mode"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-
-
-def commit():
-    url = url_base + "config/pending"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"])
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200 or res.json()["status"]["success"] != True:
-        module.fail_json(msg=msg, **result)
-
-
 def get_json_params():
     json_params = {"service_objects": []}
     json_helper = {"name": module.params["object_name"], module.params["protocol"]: True}
@@ -208,10 +187,16 @@ def get_json_params():
     if module.params["protocol"] == "tcp" or module.params["protocol"] == "udp":
         json_helper = {"name": module.params["object_name"], module.params["protocol"]: {"begin": module.params["begin"], "end": module.params["end"]}}
 
-    if module.params["protocol"] == "icmp" or module.params["protocol"] == "igmp" or module.params["protocol"] == "icmpv6" or module.params["protocol"] == "ospf" or module.params["protocol"] == "pim":
+    if (
+        module.params["protocol"] == "icmp"
+        or module.params["protocol"] == "igmp"
+        or module.params["protocol"] == "icmpv6"
+        or module.params["protocol"] == "ospf"
+        or module.params["protocol"] == "pim"
+    ):
         json_helper = {"name": module.params["object_name"], module.params["protocol"]: module.params["sub_type"].lower()}
 
-    if module.params["custom_protocol"] != None:
+    if module.params["custom_protocol"] is not None:
         json_helper = {"name": module.params["object_name"], module.params["protocol"]: module.params["custom_protocol"]}
 
     json_params["service_objects"].append(json_helper)
@@ -245,36 +230,20 @@ def service_objects():
                     break
                 api_action = None
 
-    if api_action != None:
-        execute_api_call(url, json_params, api_action)
-
-
-def execute_api_call(url, json_params, api_action):
-    match api_action:
-        case "patch":
-            res = requests.patch(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "post":
-            res = requests.post(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-        case "delete":
-            res = requests.delete(url, auth=auth_params, json=json_params, verify=module.params["ssl_verify"])
-    if res.status_code == 200:
-        result["changed"] = True
-        result["output"] = json_params
-        return
-    msg = res.json()["status"]["info"][0]["message"]
-    module.fail_json(msg=msg, **result)
+    if api_action is not None:
+        execute_api(url, json_params, api_action, auth_params, module, result)
 
 
 # Defining the actual module actions
 def main():
-    if module.params["ssl_verify"] == False:
+    if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    authentication()
+    authentication(url_base, auth_params, module, result)
 
     service_objects()
 
-    commit()
+    commit(url_base, auth_params, module, result)
 
     module.exit_json(**result)
 
