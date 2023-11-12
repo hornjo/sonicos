@@ -12,7 +12,7 @@ module: sonicos_address_groups
 
 short_description: Manages all available features for address groups on SonicWALL
 version_added: "1.0.0"
-description: 
+description:
 - This brings the capability to authenticate, absolutly manage address groups and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
@@ -40,20 +40,21 @@ options:
         description: The dictionary with the details of the group members.
         required: true
         type: list
-        member_name:
-            description: The name of member.
-            required: true
-            type: str
-        member_type:
-            description: The type of member.
-            required: true
-            type: str
-            choices: "host", "range", "network", "mac", "fqdn", "address_group"
+            - member_name:
+                description: The name of member.
+                required: true
+                type: str
+            - member_type:
+                description: The type of member.
+                required: true
+                type: str
+                choices: "host", "range", "network", "mac", "fqdn", "address_group"
     state:
         description: Defines whether the group should be present or absent. Default is present.
         type: str
         choices: "present", "absent"
         default: "present"
+
 
 author:
     - Johannes Horn (@hornjo)
@@ -61,14 +62,14 @@ author:
 """
 
 EXAMPLES = r"""
-- name: Creating an address group with mixed members. 
+- name: Creating an address group with mixed members.
   hornjo.sonicos.sonicos_address_groups:
     hostname: 192.168.178.254
     username: admin
     password: password
     ssl_verify: false
     group_name: Test_Group1
-    group_member: 
+    group_member:
       - {member_name: Test_Object, member_type: fqdn}
       - {member_name: Test_Object2, member_type: host}
       - {member_name: ipv6, member_type: range}
@@ -82,11 +83,10 @@ EXAMPLES = r"""
     password: password
     ssl_verify: false
     group_name: Test_Group2
-    group_member: 
+    group_member:
       - {member_name: Test_Object, member_type: fqdn}
       - {member_name: Test_Object2, member_type: host}
     state: absent
-
 
 
 """
@@ -218,7 +218,7 @@ def get_json_params():
 
         try:
             json_member_type[type].append({"name": item["member_name"]})
-        except:
+        except KeyError:
             json_member_type.update(
                 {
                     type: [
@@ -277,7 +277,7 @@ def address_group():
 
                 del item[ip_version]["uuid"]
 
-                if compare_json(item, json_params["address_groups"][0]) == True:
+                if compare_json(item, json_params["address_groups"][0]) is True:
                     if module.params["state"] == "absent":
                         api_action = "delete"
                         exist_group_type = ip_version
@@ -299,13 +299,13 @@ def address_group():
     if api_action == "delete":
         url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
 
-    if api_action != None:
+    if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)
 
 
 # Defining the actual module actions
 def main():
-    if module.params["ssl_verify"] == False:
+    if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     authentication(url_base, auth_params, module, result)

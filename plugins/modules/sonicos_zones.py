@@ -12,7 +12,7 @@ module: sonicos_zones
 
 short_description: Manages all available features for zones on SonicWALL
 version_added: "1.0.0"
-description: 
+description:
 - This brings the capability to authenticate, absolutly manage zones and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
@@ -50,7 +50,7 @@ options:
         description: Rule for auto generation.
         required: false
         type: dict
-        default: 
+        default:
             allow_from_to_equal=True,
             allow_from_higher=True,
             allow_to_lower=True,
@@ -59,7 +59,7 @@ options:
         description: Related ssl settings for zones.
         required: false
         type: dict
-        default: 
+        default:
             sslvpn_access=False,
             ssl_control=False,
             dpi_ssl_client=False,
@@ -68,7 +68,7 @@ options:
         description: All advanced settings.
         required: false
         type: dict
-        default: 
+        default:
             create_group_vpn=False,
             gateway_anti_virus=False,
             intrusion_prevention=False,
@@ -263,7 +263,7 @@ def zones():
             for key in keys:
                 try:
                     del item[key]
-                except:
+                except KeyError:
                     continue
 
             if item == json_params["zones"][0]:
@@ -275,13 +275,13 @@ def zones():
     if api_action == "put" or api_action == "delete":
         url = url_base + "zones" + "/name/" + module.params["zone_name"]
 
-    if api_action != None:
+    if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)
 
 
 # Defining the actual module actions
 def main():
-    if module.params["ssl_verify"] == False:
+    if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     authentication(url_base, auth_params, module, result)

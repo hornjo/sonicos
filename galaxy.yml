@@ -1,7 +1,7 @@
 ---
 namespace: hornjo
 name: sonicos
-version: 1.0.0
+version: null
 readme: README.md
 authors:
   - Johannes Horn (@hornjo)
@@ -14,8 +14,7 @@ tags:
   - firewall
   - networking
 
-# dependencies: {}
-
+dependencies: {}
 repository: https://github.com/hornjo/sonicos
 documentation: https://github.com/hornjo/sonicos/blob/main/README.md
 homepage: https://hornjo.github.io

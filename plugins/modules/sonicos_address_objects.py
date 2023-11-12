@@ -12,7 +12,7 @@ module: sonicos_address_objects
 
 short_description: Manages all available features for address objects on SonicWALL
 version_added: "1.0.0"
-description: 
+description:
 - This brings the capability to authenticate, manage all kinds of address objects and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
@@ -79,11 +79,11 @@ options:
     mac:
         description: Mac address of the address object when mac is used. Supported types are with/without colons and lowercase/uppercase.
         required: false
-        type: str 
+        type: str
     multi_homed:
         description: Defines whether a mac addres can be multi homed or not. Default is true.
         required: false
-        type: bool 
+        type: bool
     state:
         description: Defines whether a object should be present or absent. Default is present.
         type: str
@@ -318,13 +318,13 @@ def address_object():
     if api_action == "put" or api_action == "delete":
         url = url_base + "address-objects/" + type + "/name/" + module.params["object_name"]
 
-    if api_action != None:
+    if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)
 
 
 # Defining the actual module actions
 def main():
-    if module.params["ssl_verify"] == False:
+    if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     authentication(url_base, auth_params, module, result)
