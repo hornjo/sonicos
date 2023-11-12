@@ -73,6 +73,7 @@ EXAMPLES = r"""
       - {member_name: AD Directory Services, member_type: service_group}
     state: present
 
+
 - name: Deleting service group.
   hornjo.sonicos.sonicos_service_groups:
     hostname: 192.168.178.254
@@ -202,7 +203,6 @@ def service_groups():
 
             del item["uuid"]
 
-            if compare_json(item, json_params["service_groups"][0]) is True:
                 if module.params["state"] == "absent":
                     api_action = "delete"
                     break
@@ -225,6 +225,7 @@ def main():
     service_groups()
 
     commit(url_base, auth_params, module, result)
+
 
     module.exit_json(**result)
 
