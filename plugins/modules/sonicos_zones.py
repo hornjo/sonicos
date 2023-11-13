@@ -12,6 +12,7 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     execute_api,
 )
 
+
 __metaclass__ = type
 
 DOCUMENTATION = r"""
@@ -147,6 +148,7 @@ module_args = dict(
     security_type=dict(
         type="str", choices=["trusted", "public", "wireless", "sslvpn"], required=True
     ),
+
     interface_trust=dict(type="bool", default=False),
     auto_generate_access_rules=dict(
         type="dict",
@@ -217,6 +219,7 @@ auth_params = (module.params["username"], module.params["password"])
 
 def get_json_params():
     """Function builds json parameters"""
+
     json_params = {
         "zones": [
             {
@@ -287,6 +290,7 @@ def zones():
                 "websense_content_filtering",
                 "local_radius_server",
             ]
+
             for key in keys:
                 try:
                     del item[key]
@@ -309,6 +313,7 @@ def zones():
 # Defining the actual module actions
 def main():
     """Main fuction which calls the functions"""
+
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

@@ -273,6 +273,7 @@ def service_objects():
 # Defining the actual module actions
 def main():
     """Main fuction which calls the functions"""
+
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

@@ -254,7 +254,6 @@ auth_params = (module.params["username"], module.params["password"])
 
 # Defining actual module functions
 def get_json_params(ip_type):
-    """Function builds json parameters"""
     json_params = {
         "address_objects": [
             {
@@ -339,6 +338,7 @@ def address_object():
 # Defining the actual module actions
 def main():
     """Main fuction which calls the functions"""
+
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
