@@ -1,8 +1,17 @@
 #!/usr/bin/python
-
 # Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+"""Ansible module code for address objects"""
+
 from __future__ import absolute_import, division, print_function
+import requests
+import urllib3
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import (
+    authentication,
+    commit,
+    execute_api,
+)
 
 __metaclass__ = type
 
@@ -189,13 +198,6 @@ result:
 """
 
 
-# Importing needed libraries
-import requests
-import urllib3
-from ..module_utils.sonicos_core_functions import authentication, commit, execute_api
-from ansible.module_utils.basic import AnsibleModule
-
-
 # Defining module arguments
 module_args = dict(
     hostname=dict(type="str", required=True),
@@ -203,7 +205,9 @@ module_args = dict(
     password=dict(type="str", required=True, no_log=True),
     ssl_verify=dict(type="bool", default=True),
     object_name=dict(type="str", required=True),
-    object_type=dict(type="str", choices=["host", "range", "network", "mac", "fqdn"], required=True),
+    object_type=dict(
+        type="str", choices=["host", "range", "network", "mac", "fqdn"], required=True
+    ),
     zone=dict(type="str", required=True),
     ip_version=dict(type="str", choices=["ipv4", "ipv6"], default="ipv4"),
     ip=dict(type="str"),
@@ -249,18 +253,19 @@ auth_params = (module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
-def get_json_params(type):
+def get_json_params(ip_type):
+    """Function builds json parameters"""
     json_params = {
         "address_objects": [
             {
-                type: {
+                ip_type: {
                     "name": module.params["object_name"],
                     "zone": module.params["zone"],
                 }
             }
         ]
     }
-    dict_object_type = json_params["address_objects"][0][type]
+    dict_object_type = json_params["address_objects"][0][ip_type]
 
     match module.params["object_type"]:
         case "host":
@@ -285,29 +290,30 @@ def get_json_params(type):
 
 
 def address_object():
-    type = module.params["ip_version"]
+    """Creates idempotency of the module and defines action for the api"""
+    ip_type = module.params["ip_version"]
 
     if module.params["object_type"] == "mac" or module.params["object_type"] == "fqdn":
-        type = module.params["object_type"]
+        ip_type = module.params["object_type"]
 
-    url = url_address_objects + type
+    url = url_address_objects + ip_type
     api_action = None
 
-    json_params = get_json_params(type)
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+    json_params = get_json_params(ip_type)
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
     if module.params["state"] == "present":
         api_action = "post"
 
     if "address_objects" in req.json():
         for item in req.json()["address_objects"]:
-            if item[type]["name"] != module.params["object_name"]:
+            if item[ip_type]["name"] != module.params["object_name"]:
                 continue
 
             if module.params["state"] == "present":
                 api_action = "patch"
 
-            del item[type]["uuid"]
+            del item[ip_type]["uuid"]
 
             if item == json_params["address_objects"][0]:
                 if module.params["state"] == "absent":
@@ -316,7 +322,7 @@ def address_object():
                 api_action = None
 
     if api_action == "put" or api_action == "delete":
-        url = url_base + "address-objects/" + type + "/name/" + module.params["object_name"]
+        url = url_base + "address-objects/" + ip_type + "/name/" + module.params["object_name"]
 
     if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)
@@ -324,6 +330,7 @@ def address_object():
 
 # Defining the actual module actions
 def main():
+    """Main fuction which calls the functions"""
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

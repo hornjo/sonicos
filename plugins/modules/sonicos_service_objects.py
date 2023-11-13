@@ -1,8 +1,17 @@
 #!/usr/bin/python
-
 # Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+"""Ansible module code for service objects"""
+
 from __future__ import absolute_import, division, print_function
+import requests
+import urllib3
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import (
+    authentication,
+    commit,
+    execute_api,
+)
 
 __metaclass__ = type
 
@@ -126,13 +135,6 @@ result:
 """
 
 
-# Importing needed libraries
-import requests
-import urllib3
-from ..module_utils.sonicos_core_functions import authentication, commit, execute_api
-from ansible.module_utils.basic import AnsibleModule
-
-
 # Defining module arguments
 module_args = dict(
     hostname=dict(type="str", required=True),
@@ -142,7 +144,22 @@ module_args = dict(
     object_name=dict(type="str", required=True),
     protocol=dict(
         type="str",
-        choices=["custom", "icmp", "igmp", "tcp", "udp", "gre", "esp", "6over4", "ah", "icmpv6", "eigrp", "ospf", "pim", "l2tp"],
+        choices=[
+            "custom",
+            "icmp",
+            "igmp",
+            "tcp",
+            "udp",
+            "gre",
+            "esp",
+            "6over4",
+            "ah",
+            "icmpv6",
+            "eigrp",
+            "ospf",
+            "pim",
+            "l2tp",
+        ],
         required=True,
     ),
     begin=dict(type="int", required=False),
@@ -181,11 +198,18 @@ auth_params = (module.params["username"], module.params["password"])
 
 # Defining actual module functions
 def get_json_params():
+    """Function builds json parameters"""
     json_params = {"service_objects": []}
     json_helper = {"name": module.params["object_name"], module.params["protocol"]: True}
 
     if module.params["protocol"] == "tcp" or module.params["protocol"] == "udp":
-        json_helper = {"name": module.params["object_name"], module.params["protocol"]: {"begin": module.params["begin"], "end": module.params["end"]}}
+        json_helper = {
+            "name": module.params["object_name"],
+            module.params["protocol"]: {
+                "begin": module.params["begin"],
+                "end": module.params["end"],
+            },
+        }
 
     if (
         module.params["protocol"] == "icmp"
@@ -194,10 +218,16 @@ def get_json_params():
         or module.params["protocol"] == "ospf"
         or module.params["protocol"] == "pim"
     ):
-        json_helper = {"name": module.params["object_name"], module.params["protocol"]: module.params["sub_type"].lower()}
+        json_helper = {
+            "name": module.params["object_name"],
+            module.params["protocol"]: module.params["sub_type"].lower(),
+        }
 
     if module.params["custom_protocol"] is not None:
-        json_helper = {"name": module.params["object_name"], module.params["protocol"]: module.params["custom_protocol"]}
+        json_helper = {
+            "name": module.params["object_name"],
+            module.params["protocol"]: module.params["custom_protocol"],
+        }
 
     json_params["service_objects"].append(json_helper)
 
@@ -205,6 +235,7 @@ def get_json_params():
 
 
 def service_objects():
+    """Creates idempotency of the module and defines action for the api"""
     api_action = None
     url = url_base + "service-objects"
     json_params = get_json_params()
@@ -212,7 +243,7 @@ def service_objects():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
     if "service_objects" in req.json():
         for item in req.json()["service_objects"]:
@@ -236,6 +267,7 @@ def service_objects():
 
 # Defining the actual module actions
 def main():
+    """Main fuction which calls the functions"""
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

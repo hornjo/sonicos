@@ -1,8 +1,18 @@
 #!/usr/bin/python
-
 # Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+"""Ansible module code for service groups"""
+
 from __future__ import absolute_import, division, print_function
+import requests
+import urllib3
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import (
+    authentication,
+    commit,
+    execute_api,
+    compare_json,
+)
 
 __metaclass__ = type
 
@@ -120,13 +130,6 @@ result:
 """
 
 
-# Importing needed libraries
-import requests
-import urllib3
-from ansible.module_utils.basic import AnsibleModule
-from ..module_utils.sonicos_core_functions import authentication, commit, execute_api, compare_json
-
-
 # Defining module arguments
 module_args = dict(
     hostname=dict(type="str", required=True),
@@ -162,6 +165,7 @@ auth_params = (module.params["username"], module.params["password"])
 
 # Defining actual module functions
 def get_json_params():
+    """Function builds json parameters"""
     json_params = {"service_groups": [{"name": module.params["group_name"]}]}
     json_member_group = {"service_group": []}
     json_member_object = {"service_object": []}
@@ -184,6 +188,7 @@ def get_json_params():
 
 
 def service_groups():
+    """Creates idempotency of the module and defines action for the api"""
     api_action = None
     url = url_base + "service-groups"
     json_params = get_json_params()
@@ -191,7 +196,7 @@ def service_groups():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
     if "service_groups" in req.json():
         for item in req.json()["service_groups"]:
@@ -203,6 +208,7 @@ def service_groups():
 
             del item["uuid"]
 
+            if compare_json(item, json_params["service_groups"][0]) is True:
                 if module.params["state"] == "absent":
                     api_action = "delete"
                     break
@@ -217,6 +223,7 @@ def service_groups():
 
 # Defining the actual module actions
 def main():
+    """Main fuction which calls the functions"""
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -225,7 +232,6 @@ def main():
     service_groups()
 
     commit(url_base, auth_params, module, result)
-
 
     module.exit_json(**result)
 
