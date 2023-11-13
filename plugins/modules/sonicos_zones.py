@@ -1,7 +1,8 @@
 #!/usr/bin/python
-
 # Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+"""Ansible module code for zones"""
+
 from __future__ import absolute_import, division, print_function
 import requests
 import urllib3
@@ -148,7 +149,6 @@ module_args = dict(
     security_type=dict(
         type="str", choices=["trusted", "public", "wireless", "sslvpn"], required=True
     ),
-
     interface_trust=dict(type="bool", default=False),
     auto_generate_access_rules=dict(
         type="dict",

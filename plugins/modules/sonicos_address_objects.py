@@ -254,6 +254,7 @@ auth_params = (module.params["username"], module.params["password"])
 
 # Defining actual module functions
 def get_json_params(ip_type):
+    """Function builds json parameters"""
     json_params = {
         "address_objects": [
             {
