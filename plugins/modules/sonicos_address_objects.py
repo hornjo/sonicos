@@ -300,7 +300,9 @@ def address_object():
     api_action = None
 
     json_params = get_json_params(ip_type)
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = requests.get(
+        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+    )
 
     if module.params["state"] == "present":
         api_action = "post"
@@ -322,7 +324,13 @@ def address_object():
                 api_action = None
 
     if api_action == "put" or api_action == "delete":
-        url = url_base + "address-objects/" + ip_type + "/name/" + module.params["object_name"]
+        url = (
+            url_base
+            + "address-objects/"
+            + ip_type
+            + "/name/"
+            + module.params["object_name"]
+        )
 
     if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)

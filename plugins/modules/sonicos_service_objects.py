@@ -200,7 +200,10 @@ auth_params = (module.params["username"], module.params["password"])
 def get_json_params():
     """Function builds json parameters"""
     json_params = {"service_objects": []}
-    json_helper = {"name": module.params["object_name"], module.params["protocol"]: True}
+    json_helper = {
+        "name": module.params["object_name"],
+        module.params["protocol"]: True,
+    }
 
     if module.params["protocol"] == "tcp" or module.params["protocol"] == "udp":
         json_helper = {
@@ -243,7 +246,9 @@ def service_objects():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = requests.get(
+        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+    )
 
     if "service_objects" in req.json():
         for item in req.json()["service_objects"]:

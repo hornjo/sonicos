@@ -230,16 +230,24 @@ def get_json_params():
                     "allow_from_higher": module.params["auto_generate_access_rules"][
                         "allow_from_higher"
                     ],
-                    "allow_to_lower": module.params["auto_generate_access_rules"]["allow_to_lower"],
+                    "allow_to_lower": module.params["auto_generate_access_rules"][
+                        "allow_to_lower"
+                    ],
                     "deny_from_lower": module.params["auto_generate_access_rules"][
                         "deny_from_lower"
                     ],
                 },
-                "gateway_anti_virus": module.params["advanced_services"]["gateway_anti_virus"],
-                "intrusion_prevention": module.params["advanced_services"]["intrusion_prevention"],
+                "gateway_anti_virus": module.params["advanced_services"][
+                    "gateway_anti_virus"
+                ],
+                "intrusion_prevention": module.params["advanced_services"][
+                    "intrusion_prevention"
+                ],
                 "app_control": module.params["advanced_services"]["app_control"],
                 "anti_spyware": module.params["advanced_services"]["anti_spyware"],
-                "create_group_vpn": module.params["advanced_services"]["create_group_vpn"],
+                "create_group_vpn": module.params["advanced_services"][
+                    "create_group_vpn"
+                ],
                 "ssl_control": module.params["ssl_settings"]["ssl_control"],
                 "sslvpn_access": module.params["ssl_settings"]["sslvpn_access"],
                 "dpi_ssl_client": module.params["ssl_settings"]["dpi_ssl_client"],
@@ -260,7 +268,9 @@ def zones():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = requests.get(
+        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+    )
 
     if "zones" in req.json():
         for item in req.json()["zones"]:
