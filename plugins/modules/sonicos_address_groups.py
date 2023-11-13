@@ -1,8 +1,20 @@
 #!/usr/bin/python
-
 # Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+"""Ansible module code for address groups"""
+
 from __future__ import absolute_import, division, print_function
+import requests
+import urllib3
+from flatten_json import flatten
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import (
+    authentication,
+    commit,
+    execute_api,
+    compare_json,
+)
+
 
 __metaclass__ = type
 
@@ -136,14 +148,6 @@ result:
 """
 
 
-# Importing needed libraries
-import requests
-import urllib3
-from flatten_json import flatten
-from ansible.module_utils.basic import AnsibleModule
-from ..module_utils.sonicos_core_functions import authentication, commit, execute_api, compare_json
-
-
 # Defining module arguments
 module_args = dict(
     hostname=dict(type="str", required=True),
@@ -155,7 +159,11 @@ module_args = dict(
         type="list",
         required=True,
         member_name=dict(type="str", required=True),
-        member_type=dict(type="str", choices=["host", "range", "network", "mac", "fqdn", "address_group"], required=True),
+        member_type=dict(
+            type="str",
+            choices=["host", "range", "network", "mac", "fqdn", "address_group"],
+            required=True,
+        ),
     ),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
@@ -180,25 +188,29 @@ auth_params = (module.params["username"], module.params["password"])
 
 # Defining actual module functions
 def get_address_member_type(address_member_name, address_object_kind):
-    type = "ipv4"
+    """Helper function for building the json parameters"""
+    ip_type = "ipv4"
     url = url_address_groups + "ipv6"
 
     if address_object_kind != "address_group":
         url = url_base + "address-objects/ipv6"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+    req = requests.get(
+        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+    )
 
     flat_req = flatten(req.json())
 
     for value in flat_req.values():
         if address_member_name == value:
-            type = "ipv6"
+            ip_type = "ipv6"
             break
 
-    return type
+    return ip_type
 
 
 def get_json_params():
+    """Function builds json parameters"""
     json_params = {"address_groups": []}
     json_member_group = {"address_group": {}}
     json_member_object = {"address_object": {}}
@@ -206,10 +218,10 @@ def get_json_params():
 
     for item in module.params["group_member"]:
         if item["member_type"] == "mac" or item["member_type"] == "fqdn":
-            type = item["member_type"]
+            ip_type = item["member_type"]
 
         if item["member_type"] != "mac" and item["member_type"] != "fqdn":
-            type = get_address_member_type(item["member_name"], item["member_type"])
+            ip_type = get_address_member_type(item["member_name"], item["member_type"])
 
         json_member_type = json_member_object["address_object"]
 
@@ -217,11 +229,11 @@ def get_json_params():
             json_member_type = json_member_group["address_group"]
 
         try:
-            json_member_type[type].append({"name": item["member_name"]})
+            json_member_type[ip_type].append({"name": item["member_name"]})
         except KeyError:
             json_member_type.update(
                 {
-                    type: [
+                    ip_type: [
                         {"name": item["member_name"]},
                     ]
                 },
@@ -251,6 +263,7 @@ def get_json_params():
 
 
 def address_group():
+    """Creates idempotency of the module and defines action for the api"""
     api_action = None
     json_params = get_json_params()
 
@@ -261,7 +274,9 @@ def address_group():
 
     for ip_version in ip_versions:
         url = url_address_groups + ip_version
-        req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+        req = requests.get(
+            url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+        )
 
         if "address_groups" in req.json():
             for item in req.json()["address_groups"]:
@@ -293,11 +308,23 @@ def address_group():
     if api_action == "put":
         json_helper = json_params["address_groups"][0]
         group_type = next(iter(json_helper))
-        json_params["address_groups"][0][exist_group_type] = json_params["address_groups"][0].pop(group_type)
-        url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
+        json_params["address_groups"][0][exist_group_type] = json_params[
+            "address_groups"
+        ][0].pop(group_type)
+        url = (
+            url_address_groups
+            + exist_group_type
+            + "/name/"
+            + module.params["group_name"]
+        )
 
     if api_action == "delete":
-        url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
+        url = (
+            url_address_groups
+            + exist_group_type
+            + "/name/"
+            + module.params["group_name"]
+        )
 
     if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)
@@ -305,6 +332,8 @@ def address_group():
 
 # Defining the actual module actions
 def main():
+    """Main fuction which calls the functions"""
+
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

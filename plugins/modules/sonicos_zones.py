@@ -3,6 +3,15 @@
 # Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 from __future__ import absolute_import, division, print_function
+import requests
+import urllib3
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import (
+    authentication,
+    commit,
+    execute_api,
+)
+
 
 __metaclass__ = type
 
@@ -129,13 +138,6 @@ result:
 """
 
 
-# Importing needed libraries
-import requests
-import urllib3
-from ..module_utils.sonicos_core_functions import authentication, commit, execute_api
-from ansible.module_utils.basic import AnsibleModule
-
-
 # Defining module arguments
 module_args = dict(
     hostname=dict(type="str", required=True),
@@ -143,7 +145,10 @@ module_args = dict(
     password=dict(type="str", required=True, no_log=True),
     ssl_verify=dict(type="bool", default=True),
     zone_name=dict(type="str", required=True),
-    security_type=dict(type="str", choices=["trusted", "public", "wireless", "sslvpn"], required=True),
+    security_type=dict(
+        type="str", choices=["trusted", "public", "wireless", "sslvpn"], required=True
+    ),
+
     interface_trust=dict(type="bool", default=False),
     auto_generate_access_rules=dict(
         type="dict",
@@ -213,6 +218,8 @@ auth_params = (module.params["username"], module.params["password"])
 
 
 def get_json_params():
+    """Function builds json parameters"""
+
     json_params = {
         "zones": [
             {
@@ -220,16 +227,30 @@ def get_json_params():
                 "security_type": module.params["security_type"],
                 "interface_trust": module.params["interface_trust"],
                 "auto_generate_access_rules": {
-                    "allow_from_to_equal": module.params["auto_generate_access_rules"]["allow_from_to_equal"],
-                    "allow_from_higher": module.params["auto_generate_access_rules"]["allow_from_higher"],
-                    "allow_to_lower": module.params["auto_generate_access_rules"]["allow_to_lower"],
-                    "deny_from_lower": module.params["auto_generate_access_rules"]["deny_from_lower"],
+                    "allow_from_to_equal": module.params["auto_generate_access_rules"][
+                        "allow_from_to_equal"
+                    ],
+                    "allow_from_higher": module.params["auto_generate_access_rules"][
+                        "allow_from_higher"
+                    ],
+                    "allow_to_lower": module.params["auto_generate_access_rules"][
+                        "allow_to_lower"
+                    ],
+                    "deny_from_lower": module.params["auto_generate_access_rules"][
+                        "deny_from_lower"
+                    ],
                 },
-                "gateway_anti_virus": module.params["advanced_services"]["gateway_anti_virus"],
-                "intrusion_prevention": module.params["advanced_services"]["intrusion_prevention"],
+                "gateway_anti_virus": module.params["advanced_services"][
+                    "gateway_anti_virus"
+                ],
+                "intrusion_prevention": module.params["advanced_services"][
+                    "intrusion_prevention"
+                ],
                 "app_control": module.params["advanced_services"]["app_control"],
                 "anti_spyware": module.params["advanced_services"]["anti_spyware"],
-                "create_group_vpn": module.params["advanced_services"]["create_group_vpn"],
+                "create_group_vpn": module.params["advanced_services"][
+                    "create_group_vpn"
+                ],
                 "ssl_control": module.params["ssl_settings"]["ssl_control"],
                 "sslvpn_access": module.params["ssl_settings"]["sslvpn_access"],
                 "dpi_ssl_client": module.params["ssl_settings"]["dpi_ssl_client"],
@@ -242,6 +263,7 @@ def get_json_params():
 
 
 def zones():
+    """Creates idempotency of the module and defines action for the api"""
     api_action = None
     url = url_base + "zones"
     json_params = get_json_params()
@@ -249,7 +271,9 @@ def zones():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"])
+    req = requests.get(
+        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+    )
 
     if "zones" in req.json():
         for item in req.json()["zones"]:
@@ -259,7 +283,14 @@ def zones():
             if module.params["state"] == "present":
                 api_action = "patch"
 
-            keys = ["uuid", "guest_services", "wireless", "websense_content_filtering", "local_radius_server"]
+            keys = [
+                "uuid",
+                "guest_services",
+                "wireless",
+                "websense_content_filtering",
+                "local_radius_server",
+            ]
+
             for key in keys:
                 try:
                     del item[key]
@@ -281,6 +312,8 @@ def zones():
 
 # Defining the actual module actions
 def main():
+    """Main fuction which calls the functions"""
+
     if module.params["ssl_verify"] is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
