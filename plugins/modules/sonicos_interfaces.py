@@ -11,6 +11,7 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     authentication,
     commit,
     execute_api,
+    compare_json,
 )
 
 __metaclass__ = type
@@ -101,7 +102,7 @@ module_args = dict(
     interface_name=dict(type="str", required=True),
     shutdown_port=dict(type="bool", required=True),
     ip_assignment=dict(type="str", choices=["dhcp", "static"], default="static"),
-    gateway=dict(type="str", required=False),
+    gateway=dict(type="str", required=False, default="0.0.0.0"),
     ip_address=dict(type="str", required=False),
     subnetmask=dict(type="str", required=False),
     dns=dict(
@@ -122,18 +123,18 @@ module_args = dict(
     tunnel=dict(type="int", required=False),
     mtu=dict(type="int", required=False, default=1500),
     mac=dict(type="bool", default=True),
-    comment=dict(type="str", required=False),
+    comment=dict(type="str", default=""),
     management=dict(
         type="dict",
         options=dict(
-            http=dict(type="bool", default=False),
+            domain_fqdn=dict(type="str", default=""),
             https=dict(type="bool", default=False),
             ping=dict(type="bool", default=False),
             snmp=dict(type="bool", default=False),
             ssh=dict(type="bool", default=False),
         ),
         default=dict(
-            http=False,
+            domain_fqdn="",
             https=False,
             ping=False,
             snmp=False,
@@ -153,9 +154,9 @@ module_args = dict(
     ),
     https_redirect=dict(type="bool", default=False),
     auto_link_speed=dict(type="bool", default=True),
-    send_icmp_fragmentation=dict(type="bool", required=False),
-    fragment_packets=dict(type="bool", required=True),
-    ignore_df_bit=dict(type="bool", required=False),
+    send_icmp_fragmentation=dict(type="bool", default=False),
+    fragment_packets=dict(type="bool", default=True),
+    ignore_df_bit=dict(type="bool", default=False),
     auto_discovery=dict(type="bool", default=False),
     multicast=dict(type="bool", default=False),
     cos_8021p=dict(type="bool", default=False),
@@ -180,7 +181,7 @@ module = AnsibleModule(
     argument_spec=module_args,
     supports_check_mode=True,
     required_if=[
-        ["ip_assignment", "static", ["ip_address", "subnetmask", "gateway"]],
+        ["ip_assignment", "static", ["ip_address", "subnetmask"]],
         ["zone","wan",["send_icmp_fragmentation", "fragment_packets", "ignore_df_bit"]],
     ],
 )
@@ -212,11 +213,12 @@ def get_json_params():
             "flow_reporting": module.params["flow_reporting"],
             "exclude_route": module.params["exclude_route"],
             "cos_8021p": module.params["cos_8021p"],
-            "bandwith_management": {
+            "bandwidth_management": {
                 "egress": {},
                 "ingress": {},
             },
             "asymmetric_route": module.params["asymmetric_route"],
+            "multicast": module.params["multicast"],
         }
     }
 
@@ -226,7 +228,7 @@ def get_json_params():
             "tunnel": module.params["tunnel"],
             "comment": module.params["comment"],
             "management": {
-                "http": module.params["management"]["http"],
+                "fqdn_assignment": module.params["management"]["domain_fqdn"],
                 "https": module.params["management"]["https"],
                 "ping": module.params["management"]["ping"],
                 "snmp": module.params["management"]["snmp"],
@@ -236,7 +238,7 @@ def get_json_params():
                 "http": module.params["user_login"]["http"],
                 "https": module.params["user_login"]["http"],
             },
-            "https_redirect": module.params["https_redirect"],
+            "management_traffic_only": module.params["management_traffic_only"],
         }
 
         for key, value in optional_json_params.items():
@@ -272,13 +274,21 @@ def get_json_params():
 
     if module.params["zone"] == "WAN":
         wan_params = {
-            "ignore_df_bit": module.params["ignore_df_bit"],
             "fragment_packets": module.params["fragment_packets"],
             "send_icmp_fragmentation": module.params["send_icmp_fragmentation"],
         }
+        if module.params["fragment_packets"] is True:
+            df_bit_params = {
+                "ignore_df_bit": module.params["ignore_df_bit"],
+            }
+            wan_params.update(df_bit_params)
 
         json_helper["ipv4"].update(wan_params)
 
+    if module.params["management"]["https"] is True:
+        https_params = {"https_redirect": module.params["https_redirect"],}
+
+        json_helper["ipv4"].update(https_params)
 
     json_params["interfaces"].append(json_helper)
 
@@ -299,11 +309,12 @@ def interfaces():
     )
 
     # Debug
-    module.fail_json(msg=req.json(), **result)
+    # module.fail_json(msg=json_params, **result)
+    # module.fail_json(msg=req.json(), **result)
 
     if "interfaces" in req.json():
         for item in req.json()["interfaces"]:
-            if item["name"] != module.params["interface_name"]:
+            if item["ipv4"]["name"] != module.params["interface_name"]:
                 continue
 
             if module.params["state"] == "present":
@@ -313,19 +324,27 @@ def interfaces():
                 "uuid",
                 "one_arm_mode",
                 "one_arm_peer",
+                "routed_mode",
             ]
 
             for key in keys:
                 try:
-                    del item[key]
+                    del item["ipv4"][key]
                 except KeyError:
                     continue
 
-            if item == json_params["interfaces"][0]:
+            # Debug
+            # module.fail_json(msg=json_params["interfaces"][0], **result)
+            # module.fail_json(msg=item, **result)
+
+            if compare_json(item, json_params["interfaces"][0]) is True:
                 if module.params["state"] == "absent":
                     api_action = "delete"
                     break
                 api_action = None
+
+    # Debug
+    # module.fail_json(msg=api_action, **result)
 
     if api_action == "put" or api_action == "delete":
         url = url_base + "interfaces" + "/name/" + module.params["interface_name"]
