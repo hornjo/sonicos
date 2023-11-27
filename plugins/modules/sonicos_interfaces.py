@@ -118,11 +118,13 @@ module_args = dict(
             tertiary="0.0.0.0",
         ),
     ),
+    dhcp_hostname=dict(type="str", default=""),
+    dhcp_renew_on_link_up=dict(type="bool", default=False),
+    dhcp_renew_on_startup=dict(type="bool", default=False),
     zone=dict(type="str", required=False),
     vlan=dict(type="int", required=False),
     tunnel=dict(type="int", required=False),
-    mtu=dict(type="int", required=False, default=1500),
-    mac=dict(type="bool", default=True),
+    mtu=dict(type="int", default=1500),
     comment=dict(type="str", default=""),
     management=dict(
         type="dict",
@@ -163,10 +165,11 @@ module_args = dict(
     exclude_route=dict(type="bool", default=False),
     asymmetric_route=dict(type="bool", default=False),
     management_traffic_only=dict(type="bool", default=False),
-    dns_proxy=dict(type="bool", default=False),
     flow_reporting=dict(type="bool", default=True),
-    bandwith_egress=dict(type="int", required=False),
-    bandwith_ingress=dict(type="int", required=False),
+    bandwidth_egress=dict(type="int", required=False),
+    bandwidth_ingress=dict(type="int", required=False),
+    redundant_aggregation=dict(type="str", choices=["aggregation", "redundancy"]),
+    redundant_aggregation_port=dict(type="str"),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
 
@@ -239,56 +242,94 @@ def get_json_params():
                 "https": module.params["user_login"]["http"],
             },
             "management_traffic_only": module.params["management_traffic_only"],
+            "port": {},
         }
 
         for key, value in optional_json_params.items():
             if value is not None:
                 json_helper["ipv4"].update({key: value})
 
-    if module.params["ip_assignment"] == "static":
         ip_assigment_params = {
             "ip_assignment": {
                 "mode": {
-                    "static": {
-                        "gateway": module.params["gateway"],
-                        "ip": module.params["ip_address"],
-                        "netmask": module.params["subnetmask"],
+                        "dhcp": {
+                            "force_discover_interval": 0,
+                            "hostname": module.params["dhcp_hostname"],
+                            "initiate_renewals_with_discover": False,
+                            "renew_on_link_up": module.params["dhcp_renew_on_link_up"],
+                            "renew_on_startup": module.params["dhcp_renew_on_startup"],
+                        }
                     },
-                },
                 "zone": module.params["zone"]
-            }
+                }
         }
 
-        if module.params["zone"] == "WAN":
-            dns_params = {
-                "dns": {
-                    "primary": module.params["dns"]["primary"],
-                    "secondary": module.params["dns"]["secondary"],
-                    "tertiary": module.params["dns"]["tertiary"],
-                },
+        if module.params["ip_assignment"] == "static":
+            ip_assigment_params = {
+                "ip_assignment": {
+                    "mode": {
+                        "static": {
+                            "gateway": module.params["gateway"],
+                            "ip": module.params["ip_address"],
+                            "netmask": module.params["subnetmask"],
+                        },
+                    },
+                    "zone": module.params["zone"]
+                }
             }
 
-            ip_assigment_params["ip_assignment"]["mode"]["static"].update(dns_params)
+            if module.params["zone"] == "WAN":
+                dns_params = {
+                    "dns": {
+                        "primary": module.params["dns"]["primary"],
+                        "secondary": module.params["dns"]["secondary"],
+                        "tertiary": module.params["dns"]["tertiary"],
+                    },
+                }
+
+                ip_assigment_params["ip_assignment"]["mode"]["static"].update(dns_params)
 
         json_helper["ipv4"].update(ip_assigment_params)
 
-    if module.params["zone"] == "WAN":
-        wan_params = {
-            "fragment_packets": module.params["fragment_packets"],
-            "send_icmp_fragmentation": module.params["send_icmp_fragmentation"],
-        }
-        if module.params["fragment_packets"] is True:
-            df_bit_params = {
-                "ignore_df_bit": module.params["ignore_df_bit"],
+        if module.params["zone"] == "WAN":
+            wan_params = {
+                "fragment_packets": module.params["fragment_packets"],
+                "send_icmp_fragmentation": module.params["send_icmp_fragmentation"],
             }
-            wan_params.update(df_bit_params)
+            if module.params["fragment_packets"] is True:
+                df_bit_params = {
+                    "ignore_df_bit": module.params["ignore_df_bit"],
+                }
+                wan_params.update(df_bit_params)
 
-        json_helper["ipv4"].update(wan_params)
+            json_helper["ipv4"].update(wan_params)
 
-    if module.params["management"]["https"] is True:
-        https_params = {"https_redirect": module.params["https_redirect"],}
+        if module.params["management"]["https"] is True:
+            https_params = {"https_redirect": module.params["https_redirect"],}
 
-        json_helper["ipv4"].update(https_params)
+            json_helper["ipv4"].update(https_params)
+
+        if module.params["bandwidth_egress"] is not None:
+            egress_params = {
+                "amount": module.params["bandwidth_egress"]
+            }
+            json_helper["ipv4"]["bandwidth_management"]["egress"].update(egress_params)
+
+        if module.params["bandwidth_ingress"] is not None:
+            ingress_params = {
+                "amount": module.params["bandwidth_ingress"]
+            }
+            json_helper["ipv4"]["bandwidth_management"]["ingress"].update(ingress_params)
+
+        port_params = {"redundancy_aggregation": False}
+
+        if module.params["redundant_aggregation"] is not None:
+            port_params = {
+                module.params["redundant_aggregation"]:
+                    {"interface": module.params["redundant_aggregation_port"]}
+            }
+
+        json_helper["ipv4"]["port"].update(port_params)
 
     json_params["interfaces"].append(json_helper)
 
@@ -335,7 +376,7 @@ def interfaces():
 
             # Debug
             # module.fail_json(msg=json_params["interfaces"][0], **result)
-            # module.fail_json(msg=item, **result)
+            module.fail_json(msg=item, **result)
 
             if compare_json(item, json_params["interfaces"][0]) is True:
                 if module.params["state"] == "absent":

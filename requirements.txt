@@ -1,4 +1,4 @@
 requests
-fatten_json
+flatten_json
 json
 urllib3
