@@ -169,7 +169,7 @@ module_args = dict(
     bandwidth_egress=dict(type="int", required=False),
     bandwidth_ingress=dict(type="int", required=False),
     redundant_aggregation=dict(type="str", choices=["aggregation", "redundancy"]),
-    redundant_aggregation_port=dict(type="str"),
+    redundant_aggregation_port=dict(type='list', elements='str'),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
 
@@ -323,10 +323,24 @@ def get_json_params():
 
         port_params = {"redundancy_aggregation": False}
 
-        if module.params["redundant_aggregation"] is not None:
+        if module.params["redundant_aggregation"] == "aggregation":
+            port_params = {
+                "aggregation":{
+                    "aggregate": []
+                }
+            }
+
+            for index, value in enumerate(sorted(module.params["redundant_aggregation_port"])):
+                port_params_helper = {
+                    "aggno": index + 1,
+                    "interface": value,
+                }
+                port_params["aggregation"]["aggregate"].append(port_params_helper)
+
+        if module.params["redundant_aggregation"] == "redundancy":
             port_params = {
                 module.params["redundant_aggregation"]:
-                    {"interface": module.params["redundant_aggregation_port"]}
+                    {"interface": module.params["redundant_aggregation_port"][0]}
             }
 
         json_helper["ipv4"]["port"].update(port_params)
@@ -376,7 +390,7 @@ def interfaces():
 
             # Debug
             # module.fail_json(msg=json_params["interfaces"][0], **result)
-            module.fail_json(msg=item, **result)
+            # module.fail_json(msg=item, **result)
 
             if compare_json(item, json_params["interfaces"][0]) is True:
                 if module.params["state"] == "absent":
