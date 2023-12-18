@@ -1,2 +1,3 @@
 # Ignore cache file
 plugins/modules/__pycache__
+.vscode

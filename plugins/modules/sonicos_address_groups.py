@@ -195,9 +195,7 @@ def get_address_member_type(address_member_name, address_object_kind):
     if address_object_kind != "address_group":
         url = url_base + "address-objects/ipv6"
 
-    req = requests.get(
-        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-    )
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
     flat_req = flatten(req.json())
 
@@ -274,9 +272,7 @@ def address_group():
 
     for ip_version in ip_versions:
         url = url_address_groups + ip_version
-        req = requests.get(
-            url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-        )
+        req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
         if "address_groups" in req.json():
             for item in req.json()["address_groups"]:
@@ -308,23 +304,13 @@ def address_group():
     if api_action == "put":
         json_helper = json_params["address_groups"][0]
         group_type = next(iter(json_helper))
-        json_params["address_groups"][0][exist_group_type] = json_params[
-            "address_groups"
-        ][0].pop(group_type)
-        url = (
-            url_address_groups
-            + exist_group_type
-            + "/name/"
-            + module.params["group_name"]
+        json_params["address_groups"][0][exist_group_type] = json_params["address_groups"][0].pop(
+            group_type
         )
+        url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
 
     if api_action == "delete":
-        url = (
-            url_address_groups
-            + exist_group_type
-            + "/name/"
-            + module.params["group_name"]
-        )
+        url = url_address_groups + exist_group_type + "/name/" + module.params["group_name"]
 
     if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)

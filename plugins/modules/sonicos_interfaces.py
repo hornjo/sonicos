@@ -156,6 +156,7 @@ module_args = dict(
     ),
     https_redirect=dict(type="bool", default=False),
     auto_link_speed=dict(type="bool", default=True),
+    mac=dict(type="bool", default=True),
     send_icmp_fragmentation=dict(type="bool", default=False),
     fragment_packets=dict(type="bool", default=True),
     ignore_df_bit=dict(type="bool", default=False),
@@ -169,7 +170,7 @@ module_args = dict(
     bandwidth_egress=dict(type="int", required=False),
     bandwidth_ingress=dict(type="int", required=False),
     redundant_aggregation=dict(type="str", choices=["aggregation", "redundancy"]),
-    redundant_aggregation_port=dict(type='list', elements='str'),
+    redundant_aggregation_port=dict(type="list", elements="str"),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
 
@@ -185,7 +186,7 @@ module = AnsibleModule(
     supports_check_mode=True,
     required_if=[
         ["ip_assignment", "static", ["ip_address", "subnetmask"]],
-        ["zone","wan",["send_icmp_fragmentation", "fragment_packets", "ignore_df_bit"]],
+        ["zone", "wan", ["send_icmp_fragmentation", "fragment_packets", "ignore_df_bit"]],
     ],
 )
 
@@ -197,20 +198,14 @@ auth_params = (module.params["username"], module.params["password"])
 # Defining actual module functions
 def get_json_params():
     """Function builds json parameters"""
-    json_params = {
-        "interfaces": []
-    }
+    json_params = {"interfaces": []}
 
     json_helper = {
         "ipv4": {
             "name": module.params["interface_name"],
             "mtu": module.params["mtu"],
-            "link_speed": {
-                "auto_negotiate": module.params["auto_link_speed"]
-            },
-            "mac": {
-                "default": module.params["auto_link_speed"]
-            },
+            "link_speed": {"auto_negotiate": module.params["auto_link_speed"]},
+            "mac": {"default": module.params["mac"]},
             "ip_assignment": {},
             "shutdown_port": module.params["shutdown_port"],
             "flow_reporting": module.params["flow_reporting"],
@@ -252,16 +247,16 @@ def get_json_params():
         ip_assigment_params = {
             "ip_assignment": {
                 "mode": {
-                        "dhcp": {
-                            "force_discover_interval": 0,
-                            "hostname": module.params["dhcp_hostname"],
-                            "initiate_renewals_with_discover": False,
-                            "renew_on_link_up": module.params["dhcp_renew_on_link_up"],
-                            "renew_on_startup": module.params["dhcp_renew_on_startup"],
-                        }
-                    },
-                "zone": module.params["zone"]
-                }
+                    "dhcp": {
+                        "force_discover_interval": 0,
+                        "hostname": module.params["dhcp_hostname"],
+                        "initiate_renewals_with_discover": False,
+                        "renew_on_link_up": module.params["dhcp_renew_on_link_up"],
+                        "renew_on_startup": module.params["dhcp_renew_on_startup"],
+                    }
+                },
+                "zone": module.params["zone"],
+            }
         }
 
         if module.params["ip_assignment"] == "static":
@@ -274,7 +269,7 @@ def get_json_params():
                             "netmask": module.params["subnetmask"],
                         },
                     },
-                    "zone": module.params["zone"]
+                    "zone": module.params["zone"],
                 }
             }
 
@@ -305,30 +300,24 @@ def get_json_params():
             json_helper["ipv4"].update(wan_params)
 
         if module.params["management"]["https"] is True:
-            https_params = {"https_redirect": module.params["https_redirect"],}
+            https_params = {
+                "https_redirect": module.params["https_redirect"],
+            }
 
             json_helper["ipv4"].update(https_params)
 
         if module.params["bandwidth_egress"] is not None:
-            egress_params = {
-                "amount": module.params["bandwidth_egress"]
-            }
+            egress_params = {"amount": module.params["bandwidth_egress"]}
             json_helper["ipv4"]["bandwidth_management"]["egress"].update(egress_params)
 
         if module.params["bandwidth_ingress"] is not None:
-            ingress_params = {
-                "amount": module.params["bandwidth_ingress"]
-            }
+            ingress_params = {"amount": module.params["bandwidth_ingress"]}
             json_helper["ipv4"]["bandwidth_management"]["ingress"].update(ingress_params)
 
         port_params = {"redundancy_aggregation": False}
 
         if module.params["redundant_aggregation"] == "aggregation":
-            port_params = {
-                "aggregation":{
-                    "aggregate": []
-                }
-            }
+            port_params = {"aggregation": {"aggregate": []}}
 
             for index, value in enumerate(sorted(module.params["redundant_aggregation_port"])):
                 port_params_helper = {
@@ -339,8 +328,9 @@ def get_json_params():
 
         if module.params["redundant_aggregation"] == "redundancy":
             port_params = {
-                module.params["redundant_aggregation"]:
-                    {"interface": module.params["redundant_aggregation_port"][0]}
+                module.params["redundant_aggregation"]: {
+                    "interface": module.params["redundant_aggregation_port"][0]
+                }
             }
 
         json_helper["ipv4"]["port"].update(port_params)
@@ -348,6 +338,26 @@ def get_json_params():
     json_params["interfaces"].append(json_helper)
 
     return json_params
+
+
+def unassign_interface(url, tmp_json_params):
+    """Unassiging Interfaces in case the will be used for aggregation or redundancy"""
+    unassign_port_params = {
+        "port": {},
+    }
+    tmp_json_params["interfaces"][0]["ipv4"].update(unassign_port_params)
+    # Debug
+    # module.fail_json(msg=tmp_json_params, **result)
+
+    requests.patch(
+        url,
+        auth=auth_params,
+        json=tmp_json_params,
+        verify=module.params["ssl_verify"],
+        timeout=10,
+    )
+
+    commit(url_base, auth_params, module, result)
 
 
 def interfaces():
@@ -359,9 +369,7 @@ def interfaces():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(
-        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-    )
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
     # Debug
     # module.fail_json(msg=json_params, **result)
@@ -403,6 +411,9 @@ def interfaces():
 
     if api_action == "put" or api_action == "delete":
         url = url_base + "interfaces" + "/name/" + module.params["interface_name"]
+
+    if api_action == "patch" and module.params["redundant_aggregation"] is not None:
+        unassign_interface(url, json_params)
 
     if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)

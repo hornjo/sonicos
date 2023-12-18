@@ -1,7 +1,7 @@
 ---
 namespace: hornjo
 name: sonicos
-version: null
+version: 1.0.0
 readme: README.md
 authors:
   - Johannes Horn (@hornjo)

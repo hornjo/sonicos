@@ -56,12 +56,12 @@ In order to use the modules of the collection, in total following python librari
 - urllib3
 - flatten_json
 
-### Installing required libraries and SDK
+### Installing required libraries
 
-Installing collection does not install any required third party Python libraries or SDKs. You need to install the required Python libraries using following command:
+Installing collection does not install any required third party Python libraries. You need to install the required Python libraries using following command:
 
 ```sell
-pip install -r ~/.ansible/collections/ansible_collections/community/vmware/requirements.txt
+pip install -r ~/.ansible/collections/ansible_collections/hornjo/sonicos/requirements.txt
 ``````
 
 ## Testing and Development

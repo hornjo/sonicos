@@ -12,9 +12,7 @@ __metaclass__ = type
 def authentication(url_base, auth_params, module, result):
     """Basic authentication on the API"""
     url = url_base + "auth"
-    res = requests.post(
-        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-    )
+    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
     msg = res.json()["status"]["info"][0]["message"]
     if res.status_code != 200:
         module.fail_json(msg=msg, **result)
@@ -25,9 +23,7 @@ def authentication(url_base, auth_params, module, result):
 def configmode(url_base, auth_params, module, result):
     """Enter config mode"""
     url = url_base + "config-mode"
-    res = requests.post(
-        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-    )
+    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
     msg = res.json()["status"]["info"][0]["message"]
     if res.status_code != 200:
         module.fail_json(msg=msg, **result)
@@ -36,9 +32,7 @@ def configmode(url_base, auth_params, module, result):
 def commit(url_base, auth_params, module, result):
     """Commits the changes to the API"""
     url = url_base + "config/pending"
-    res = requests.post(
-        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-    )
+    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
     msg = res.json()["status"]["info"][0]["message"]
     if res.status_code != 200 or res.json()["status"]["success"] is not True:
         module.fail_json(msg=msg, **result)
@@ -89,9 +83,7 @@ def sort_json(json_data):
         return {key: sort_json(value) for key, value in json_data.items()}
     elif isinstance(json_data, list):
         if all(isinstance(item, dict) for item in json_data):
-            return sorted(
-                json_data, key=lambda x: json.dumps(sort_json(x), sort_keys=True)
-            )
+            return sorted(json_data, key=lambda x: json.dumps(sort_json(x), sort_keys=True))
         else:
             return sorted(json_data)
     return json_data

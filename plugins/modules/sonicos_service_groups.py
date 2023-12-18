@@ -141,9 +141,7 @@ module_args = dict(
         type="list",
         required=True,
         member_name=dict(type="str", required=True),
-        member_type=dict(
-            type="str", choices=["service_object", "service_group"], required=True
-        ),
+        member_type=dict(type="str", choices=["service_object", "service_group"], required=True),
     ),
     state=dict(type="str", choices=["present", "absent"], default="present"),
 )
@@ -198,9 +196,7 @@ def service_groups():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(
-        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-    )
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
     if "service_groups" in req.json():
         for item in req.json()["service_groups"]:

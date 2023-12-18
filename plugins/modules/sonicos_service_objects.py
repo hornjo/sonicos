@@ -246,9 +246,7 @@ def service_objects():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(
-        url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-    )
+    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
     if "service_objects" in req.json():
         for item in req.json()["service_objects"]:
