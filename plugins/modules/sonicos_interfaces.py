@@ -42,6 +42,7 @@ options:
         description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
+        default: True
 
     state:
         description: Defines whether a object should be present or absent. Default is present.
@@ -52,7 +53,6 @@ options:
 
 author:
     - Johannes Horn (@hornjo)
-    - Marco Fuchs (@FuxMak)
 """
 
 EXAMPLES = r"""

@@ -41,6 +41,7 @@ options:
         description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
+        default: true
     object_name:
         description: Name of the address object.
         required: true

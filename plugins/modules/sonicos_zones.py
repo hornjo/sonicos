@@ -42,6 +42,7 @@ options:
         description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
+        default: true
     zone_name:
         description: Name of the zone.
         required: true

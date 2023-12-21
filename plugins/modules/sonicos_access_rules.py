@@ -18,12 +18,12 @@ __metaclass__ = type
 
 DOCUMENTATION = r"""
 ---
-module: sonicos_address_objects
+module: sonicos_access_rules
 
-short_description: Manages all available features for address objects on SonicWALL
+short_description: Manages all available features for access rules on SonicWALL
 version_added: "1.0.0"
 description:
-- This brings the capability to authenticate, manage all kinds of address objects and commits the changes
+- This brings the capability to authenticate, manage all kinds of access rules and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
     hostname:
@@ -40,11 +40,126 @@ options:
         type: str
     ssl_verify:
         description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is True.
-        required: false
+        required: False
         type: bool
-
+        default: True
+    rule_name:
+        description: Name which optionally can be used.
+        required: False
+        type: str
+    action:
+        description: The action which the rule will do.
+        required: False
+        type: str
+        default: allow
+        choices: allow, deny, discard
+    source_zone:
+        description: The source zone which is used in the rule.
+        required: True
+        type: str
+    source_address:
+        description: The source address object or group which is used in the rule.
+        required: True
+        type: str
+    source_service:
+        description: The source service object or group which used in the rule.
+        required: True
+        type: str
+    destination_zone:
+        description: The destination zone which is used in the rule.
+        required: True
+        type: str
+    destination_address:
+        description: The destination address object or group which is used in the rule.
+        required: True
+        type: str
+    destination_service:
+        description: The destination service object or group which used in the rule.
+        required: True
+        type: str
+    enable:
+        description: Defines whether the rule will be enabled or just created.
+        required: False
+        type: bool
+        default: True
+    users_include:
+        description: The users which will be included in the acces rules.
+        required: False
+        type: str
+        choices: "All", "Everyone", "Trusted Users", "Content Filtering Bypass", "Limited Administrators", "SonicWALL Administrators", "SonicWALL Read-Only Admins", "Guest Services", "Guest Administrators", "SSLVPN Services"
+        default: "All"
+    users_exclude:
+        description: The users which will be excluded in the acces rules.
+        required: False
+        type: str
+        choices: "None", "Everyone", "Trusted Users", "Content Filtering Bypass", "Limited Administrators", "SonicWALL Administrators", "SonicWALL Read-Only Admins", "Guest Services", "Guest Administrators", "SSLVPN Services" 
+        default: "None"
+    comment:
+        description: Comment which will be shown in the rule.
+        required: False
+        type: str
+    max_connections:
+        description: Persentage of connection which will be allowed in the rule. Only Values between 1 and 100.
+        required: False
+        type: int
+        default: 100
+    logging:
+        description: Defines whether the logging of the rule is enabled or not.
+        required: False
+        type: bool
+        default: True
+    sip:
+        description: Defines whether the sip in the rule is allowed or not.
+        required: False
+        type: bool
+        default: False 
+    h323:
+        description: Defines whether the h323 in the rule is allowed or not.
+        required: False
+        type: bool
+        default: False
+    management_traffic:
+        description: Defines whether the management traffic in the rule is allowed or not.
+        required: False
+        type: bool
+        default: False
+    packet_monitoring:
+        description: Defines whether the packet monitor will show the traffic of the rule or not.
+        required: False
+        type: bool
+        default: False
+    tcp_urgent_packages:
+        description: Defines whether the tcp urgent packages are allowed or not.
+        required: False
+        type: bool
+        default: False
+    fragment_packages:
+        description: Defines whether the fragmented packages are allowed or not.
+        required: False
+        type: bool
+        default: True
+    dpi:
+        description: Defines whether the deep package inspection in enabled or not.
+        required: False
+        type: bool
+        default: True
+    dpi_ssl_client:
+        description: Defines whether the ssl for the client of the deep package inspection in enabled or not.
+        required: False
+        type: bool
+        default: True
+    dpi_ssl_server:
+        description: Defines whether the ssl for the server of the deep package inspection in enabled or not.
+        required: False
+        type: bool
+        default: True
+    flow_reporting:
+        description: Defines whether flow reporting in rule is enabled or not.
+        required: False
+        type: bool
+        default: False
     state:
-        description: Defines whether a object should be present or absent. Default is present.
+        description: Defines whether a object should be present or absent. Default is present. The absent parameter only looks at the source and destinations
         type: str
         choices: "present", "absent"
         default: "present"
@@ -52,31 +167,52 @@ options:
 
 author:
     - Johannes Horn (@hornjo)
-    - Marco Fuchs (@FuxMak)
 """
 
 EXAMPLES = r"""
-- name:
-  hornjo.sonicos.sonicos_address_object:
+- name: Create specific custom rule
+  hornjo.sonicos.sonicos_access_rules:
     hostname: 192.168.178.254
     username: admin
     password: password
+    source_zone: LAN
+    source_address: Test_group
+    source_service: any
+    destination_zone: WAN
+    destination_address: Test2
+    destination_service: ICMP
+    rule_name: Development_2
+    comment: |
+      Ansible Testrule
+      Requires knowledge
+    max_connections: 99
+    sip: true
+    h323: true
+    management_traffic: true
+    packet_monitoring: true
+    tcp_urgent_packages: true
+    logging: false
+    fragment_packages: false
+    dpi: false
+    dpi_ssl_client: false
+    dpi_ssl_server: false
+    flow_reporting: true
+    users_include: SSLVPN Services
+    users_exclude: Everyone
     ssl_verify: false
     state: present
 
-- name:
-  hornjo.sonicos.sonicos_address_object:
+- name: Deletion of an access rule - no matter which other stats where given
+  hornjo.sonicos.sonicos_access_rules:
     hostname: 192.168.178.254
     username: admin
     password: password
+    source_zone: LAN
+    source_address: Test_group
+    source_service: any
+    destination_zone: DMZ
+    destination_address: Test3
     state: absent
-
-- name:
-  hornjo.sonicos.sonicos_address_object:
-    hostname: 192.168.178.254
-    username: admin
-    password: password
-    state: present
 
 
 """
@@ -109,7 +245,6 @@ module_args = dict(
     destination_address=dict(type="str", required=True),
     destination_service=dict(type="str", required=True),
     enable=dict(type="bool", default=True),
-    auto_rule=dict(type="bool", default=False),
     users_include=dict(
         type="str",
         choices=[
@@ -118,7 +253,7 @@ module_args = dict(
             "Trusted Users",
             "Content Filtering Bypass",
             "Limited Administrators",
-            "SonicWall Administrators",
+            "SonicWALL Administrators",
             "SonicWALL Read-Only Admins",
             "Guest Services",
             "Guest Administrators",
@@ -134,7 +269,7 @@ module_args = dict(
             "Trusted Users",
             "Content Filtering Bypass",
             "Limited Administrators",
-            "SonicWall Administrators",
+            "SonicWALL Administrators",
             "SonicWALL Read-Only Admins",
             "Guest Services",
             "Guest Administrators",
@@ -254,7 +389,7 @@ def get_json_params():
             "schedule": {"always_on": True},
             "comment": "",
             "enable": module.params["enable"],
-            "auto_rule": module.params["auto_rule"],
+            "auto_rule": False,
             "max_connections": module.params["max_connections"],
             "logging": module.params["logging"],
             "sip": module.params["sip"],
@@ -279,7 +414,6 @@ def get_json_params():
             "geo_ip_filter": {"enable": False, "global": True},
             "block": {"countries": {"unknown": True}},
             "quality_of_service": {"class_of_service": {}, "dscp": {"preserve": True}},
-            "bandwidth_management": {"egress": {}, "ingress": {}},
             "redirect_unauthenticated_users_to_log_in": True,
         }
     }
@@ -309,6 +443,12 @@ def get_json_params():
         exclude_user_params = {"excluded": {"group": module.params["users_exclude"]}}
         user_params["users"].update(exclude_user_params)
 
+    bandwidth_params = {
+        "bandwidth_management": {"egress": {}, "ingress": {}},
+    }
+    if module.params["action"] == "allow":
+        json_helper[api_endpoint_ip].update(bandwidth_params)
+
     json_helper[api_endpoint_ip].update(user_params)
     json_params["access_rules"].append(json_helper)
 
@@ -317,21 +457,22 @@ def get_json_params():
 
 def get_address_type(address_name):
     """Determinig the type for source and destination address"""
-    address_type = "name"
-    api_ip_endpoint = "ipv4"
-
     for ip_version in "ipv4", "ipv6":
-        url = url_base + "address-groups/" + ip_version
-        req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+        for address_kind in "objects", "groups":
+            var_helper = "address_" + address_kind
+            url = url_base + "address-" + address_kind + "/" + ip_version
+            req = requests.get(
+                url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+            )
 
-        if "address_groups" in req.json():
-            for item in req.json()["address_groups"]:
-                if item[ip_version]["name"] == address_name:
-                    address_type = "group"
-                    api_ip_endpoint = ip_version
-                    return address_type, api_ip_endpoint
-
-    return address_type, api_ip_endpoint
+            if var_helper in req.json():
+                for item in req.json()[var_helper]:
+                    if item[ip_version]["name"] == address_name:
+                        address_type = "group"
+                        if address_kind == "objects":
+                            address_type = "name"
+                        api_ip_endpoint = ip_version
+                        return address_type, api_ip_endpoint
 
 
 def get_service_type(service_name):
@@ -360,10 +501,6 @@ def access_rules():
 
     req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
 
-    # Debug
-    # module.fail_json(msg=json_params, **result)
-    # module.fail_json(msg=req.json(), **result)
-
     if "access_rules" in req.json():
         for item in req.json()["access_rules"]:
             if (
@@ -389,7 +526,12 @@ def access_rules():
 
             if module.params["state"] == "present":
                 api_action = "put"
-                api_endpoint = item[api_endpoint_ip]["uuid"]
+
+            api_endpoint = item[api_endpoint_ip]["uuid"]
+
+            if module.params["state"] == "absent":
+                api_action = "delete"
+                break
 
             keys = ["uuid"]
             if module.params["rule_name"] is None:
@@ -401,21 +543,11 @@ def access_rules():
                 except KeyError:
                     continue
 
-            # Debug
-            # module.fail_json(msg=json_params["access_rules"][0], **result)
-            # module.fail_json(msg=item, **result)
-
             if compare_json(item, json_params["access_rules"][0]) is True:
-                if module.params["state"] == "absent":
-                    api_action = "delete"
-                    break
                 api_action = None
 
-    # Debug
-    # module.fail_json(msg=api_action, **result)
-
-    if api_action == "put":
-        url = url_base + "access-rules/ipv4" + "/uuid/" + api_endpoint
+    if api_action == "put" or api_action == "delete":
+        url = url_base + "access-rules/" + api_endpoint_ip + "/uuid/" + api_endpoint
 
     if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)
