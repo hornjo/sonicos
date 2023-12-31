@@ -225,7 +225,6 @@ result:
     sample: {
         "changed": false,
         "failed": false,
-        "output": {
     }
 """
 
@@ -296,7 +295,6 @@ module_args = dict(
 # Defining registerable values
 result = dict(
     changed=False,
-    output=None,
 )
 
 # Defining ansible settings

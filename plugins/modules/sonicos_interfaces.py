@@ -340,26 +340,6 @@ def get_json_params():
     return json_params
 
 
-def unassign_interface(url, tmp_json_params):
-    """Unassiging Interfaces in case the will be used for aggregation or redundancy"""
-    unassign_port_params = {
-        "port": {},
-    }
-    tmp_json_params["interfaces"][0]["ipv4"].update(unassign_port_params)
-    # Debug
-    # module.fail_json(msg=tmp_json_params, **result)
-
-    requests.patch(
-        url,
-        auth=auth_params,
-        json=tmp_json_params,
-        verify=module.params["ssl_verify"],
-        timeout=10,
-    )
-
-    commit(url_base, auth_params, module, result)
-
-
 def interfaces():
     """Creates idempotency of the module and defines action for the api"""
     api_action = None
@@ -381,7 +361,7 @@ def interfaces():
                 continue
 
             if module.params["state"] == "present":
-                api_action = "patch"
+                api_action = "put"
 
             keys = [
                 "uuid",
@@ -406,14 +386,29 @@ def interfaces():
                     break
                 api_action = None
 
+            if (
+                module.params["redundant_aggregation"] not in item["ipv4"]["port"]
+                and module.params["redundant_aggregation"] is not None
+            ):
+                tmp_port_params = {
+                    "port": {"redundancy_aggregation": False},
+                }
+                tmp_json_params = {"interfaces": [item]}
+                tmp_json_params["interfaces"][0]["ipv4"].update(tmp_port_params)
+
+                # module.fail_json(msg=tmp_json_params, **result)
+
+                requests.patch(
+                    url,
+                    auth=auth_params,
+                    json=tmp_json_params,
+                    verify=module.params["ssl_verify"],
+                    timeout=10,
+                )
+                commit(url_base, auth_params, module, result)
+
     # Debug
     # module.fail_json(msg=api_action, **result)
-
-    if api_action == "put" or api_action == "delete":
-        url = url_base + "interfaces" + "/name/" + module.params["interface_name"]
-
-    if api_action == "patch" and module.params["redundant_aggregation"] is not None:
-        unassign_interface(url, json_params)
 
     if api_action is not None:
         execute_api(url, json_params, api_action, auth_params, module, result)

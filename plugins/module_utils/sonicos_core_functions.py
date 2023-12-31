@@ -67,7 +67,10 @@ def execute_api(url, json_params, api_action, auth_params, module, result):
             )
         case "delete":
             res = requests.delete(
-                url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
+                url,
+                auth=auth_params,
+                verify=module.params["ssl_verify"],
+                timeout=10,
             )
     if res.status_code == 200:
         result["changed"] = True
