@@ -39,7 +39,7 @@ options:
         required: True
         type: str
     ssl_verify:
-        description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is True.
+        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is True.
         required: False
         type: bool
         default: True
