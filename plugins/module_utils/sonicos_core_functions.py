@@ -83,7 +83,7 @@ def execute_api(url, json_params, api_action, auth_params, module, result):
     if res.status_code == 200:
         result["changed"] = True
         result["output"] = json_params
-        result["response"] = res.text
+        result["response"] = res.content
         return
     msg = res.json()["status"]["info"][0]["message"]
     module.fail_json(msg=msg, **result)

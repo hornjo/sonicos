@@ -121,25 +121,27 @@ def main():
 
     authentication(url_base, auth_params, module, result)
 
-    json_params = {}
+    json_params = None
     api_action = 'get'
-    url = url_base + '/export/current-config/cli'
+    url = url_base + 'export/current-config/cli'
     if module.params["exp_format"]:
-        url = url_base + '/export/current-config/exp'
+        url = url_base + 'export/current-config/exp'
 
-    if not module.params['dir_path']:
-        dir_path = './backup'
+    dir_path = './backup'
+    if module.params['dir_path']:
+        dir_path = module.params['dir_path']
 
-    if not module.params['filename']:
-        filename = 'backup.txt'
-        if module.params['exp_format']:
-            filename = 'backup.exp'
+    filename = 'backup.txt'
+    if module.params['exp_format']:
+        filename = 'backup.exp'
+    if module.params['filename']:
+        filename = module.params['filename']
     
     output_file = os.path.join(dir_path, filename)
 
     execute_api(url, json_params, api_action, auth_params, module, result)
 
-    with open(output_file, 'w') as output:
+    with open(output_file, 'wb') as output:
         output.write(result['response'])
 
     module.exit_json(**result)
