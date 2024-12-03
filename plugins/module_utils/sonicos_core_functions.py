@@ -41,6 +41,14 @@ def commit(url_base, auth_params, module, result):
 def execute_api(url, json_params, api_action, auth_params, module, result):
     """Takes the needed action to the API from the module"""
     match api_action:
+        case "get":
+            res = requests.get(
+                url,
+                auth=auth_params,
+                json=json_params,
+                verify=module.params["ssl_verify"],
+                timeout=10,
+            )
         case "put":
             res = requests.put(
                 url,
@@ -75,6 +83,7 @@ def execute_api(url, json_params, api_action, auth_params, module, result):
     if res.status_code == 200:
         result["changed"] = True
         result["output"] = json_params
+        result["response"] = res.text
         return
     msg = res.json()["status"]["info"][0]["message"]
     module.fail_json(msg=msg, **result)
