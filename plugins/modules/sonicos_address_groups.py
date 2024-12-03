@@ -184,7 +184,7 @@ module = AnsibleModule(
 # Defining global variables
 url_base = "https://" + module.params["hostname"] + "/api/sonicos/"
 url_address_groups = url_base + "address-groups/"
-auth_params = (module.params["username"], module.params["password"])
+auth_params = requests.auth.HTTPDigestAuth(module.params["username"], module.params["password"])
 
 
 # Defining actual module functions

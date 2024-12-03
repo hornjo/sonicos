@@ -5,6 +5,7 @@
 
 from __future__ import absolute_import, division, print_function
 import os
+import requests
 import urllib3
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import authentication, execute_api  # NOQA
@@ -108,7 +109,7 @@ module = AnsibleModule(
 
 # Defining global variables
 url_base = "https://" + module.params["hostname"] + "/api/sonicos/"
-auth_params = (module.params["username"], module.params["password"])
+auth_params = requests.auth.HTTPDigestAuth(module.params["username"], module.params["password"])
 
 
 # Defining the actual module actions
