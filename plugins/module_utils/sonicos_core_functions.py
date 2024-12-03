@@ -13,6 +13,9 @@ def authentication(url_base, auth_params, module, result):
     """Basic authentication on the API"""
     url = url_base + "auth"
     res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    # FIXME: For early versions of the 7.0 release, POST at the /auth URL wasn't yet supported.
+    #        The response comes back with 401 status code, but the body is completely blank and causes json decode errors.
+    #        There's probably a better way to handle these, right now they crash ansible into a traceback.
     msg = res.json()["status"]["info"][0]["message"]
     if res.status_code != 200:
         module.fail_json(msg=msg, **result)
