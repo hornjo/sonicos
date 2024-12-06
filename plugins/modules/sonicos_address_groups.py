@@ -13,6 +13,8 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     commit,
     execute_api,
     compare_json,
+    session,
+    raise_for_error,
 )
 
 
@@ -196,7 +198,8 @@ def get_address_member_type(address_member_name, address_object_kind):
     if address_object_kind != "address_group":
         url = url_base + "address-objects/ipv6"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     flat_req = flatten(req.json())
 
@@ -273,7 +276,8 @@ def address_group():
 
     for ip_version in ip_versions:
         url = url_address_groups + ip_version
-        req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+        req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+        raise_for_error(url, req, module, result)
 
         if "address_groups" in req.json():
             for item in req.json()["address_groups"]:

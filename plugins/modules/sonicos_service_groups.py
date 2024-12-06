@@ -12,6 +12,8 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     commit,
     execute_api,
     compare_json,
+    session,
+    raise_for_error,
 )
 
 __metaclass__ = type
@@ -197,7 +199,8 @@ def service_groups():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if "service_groups" in req.json():
         for item in req.json()["service_groups"]:

@@ -12,6 +12,8 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     commit,
     execute_api,
     compare_json,
+    session,
+    raise_for_error,
 )
 
 __metaclass__ = type
@@ -349,11 +351,8 @@ def interfaces():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
-
-    # Debug
-    # module.fail_json(msg=json_params, **result)
-    # module.fail_json(msg=req.json(), **result)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if "interfaces" in req.json():
         for item in req.json()["interfaces"]:
@@ -398,13 +397,14 @@ def interfaces():
 
                 # module.fail_json(msg=tmp_json_params, **result)
 
-                requests.patch(
+                req = session.patch(
                     url,
                     auth=auth_params,
                     json=tmp_json_params,
                     verify=module.params["ssl_verify"],
                     timeout=10,
                 )
+                raise_for_error(url, req, module, result)
                 commit(url_base, auth_params, module, result)
 
     # Debug

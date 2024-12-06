@@ -12,6 +12,8 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     commit,
     execute_api,
     compare_json,
+    session,
+    raise_for_error,
 )
 
 __metaclass__ = type
@@ -459,9 +461,10 @@ def get_address_type(address_name):
         for address_kind in "objects", "groups":
             var_helper = "address_" + address_kind
             url = url_base + "address-" + address_kind + "/" + ip_version
-            req = requests.get(
+            req = session.get(
                 url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
             )
+            raise_for_error(url, req, module, result)
 
             if var_helper in req.json():
                 for item in req.json()[var_helper]:
@@ -477,7 +480,8 @@ def get_service_type(service_name):
     """Determinig the type for source and detination service"""
     service_type = "name"
     url = url_base + "service-groups"
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if "service_groups" in req.json():
         for item in req.json()["service_groups"]:
@@ -497,7 +501,8 @@ def access_rules():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if "access_rules" in req.json():
         for item in req.json()["access_rules"]:

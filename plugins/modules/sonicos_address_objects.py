@@ -11,6 +11,8 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     authentication,
     commit,
     execute_api,
+    session,
+    raise_for_error,
 )
 
 __metaclass__ = type
@@ -301,7 +303,8 @@ def address_object():
     api_action = None
 
     json_params = get_json_params(ip_type)
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if module.params["state"] == "present":
         api_action = "post"
