@@ -24,7 +24,7 @@ def raise_for_error(url, res, module, result, check_success=False):
     if res.status_code != 200 or (check_success and res.json()["status"]["success"] is not True):
         code = res.json()["status"]["info"][0]["code"]
         msg = res.json()["status"]["info"][0]["message"]
-        text = 'Api call failed.... URL: %s, CODE: %s, MESSAGE: %s' % (url, code, msg)
+        text = 'API FAILURE:  URL: %s, FAILURE_CODE: %s, MESSAGE: %s' % (url, code, msg)
         module.fail_json(msg=text, **result)
 
 
