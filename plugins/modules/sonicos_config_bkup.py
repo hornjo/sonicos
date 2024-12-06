@@ -8,7 +8,7 @@ import os
 import requests
 import urllib3
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import authentication, execute_api  # NOQA
+from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import authentication, execute_api, logout  # NOQA
 
 __metaclass__ = type
 
@@ -143,6 +143,8 @@ def main():
 
     with open(output_file, 'wb') as output:
         output.write(result['response'])
+
+    logout(url_base, auth_params, module)
 
     module.exit_json(**result)
 

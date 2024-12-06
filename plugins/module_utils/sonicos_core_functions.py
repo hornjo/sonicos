@@ -38,6 +38,13 @@ def authentication(url_base, auth_params, module, result):
         configmode(url_base, auth_params, module, result)
 
 
+def logout(url_base, auth_params, module):
+    """Logout from the API"""
+    url = url_base + "auth"
+    session.delete(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    # Ignore any failure response here, as the session is ending anyway.
+
+
 def configmode(url_base, auth_params, module, result):
     """Enter config mode"""
     url = url_base + "config-mode"

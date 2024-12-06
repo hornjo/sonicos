@@ -14,6 +14,7 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     compare_json,
     session,
     raise_for_error,
+    logout,
 )
 
 __metaclass__ = type
@@ -237,6 +238,8 @@ def main():
     service_groups()
 
     commit(url_base, auth_params, module, result)
+
+    logout(url_base, auth_params, module)
 
     module.exit_json(**result)
 

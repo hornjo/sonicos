@@ -13,6 +13,7 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     execute_api,
     session,
     raise_for_error,
+    logout,
 )
 
 
@@ -316,6 +317,8 @@ def main():
     zones()
 
     commit(url_base, auth_params, module, result)
+
+    logout(url_base, auth_params, module)
 
     module.exit_json(**result)
 
