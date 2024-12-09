@@ -61,46 +61,45 @@ def commit(url_base, auth_params, module, result):
 
 def execute_api(url, json_params, api_action, auth_params, module, result):
     """Takes the needed action to the API from the module"""
-    match api_action:
-        case "get":
-            res = session.get(
-                url,
-                auth=auth_params,
-                json=json_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-        case "put":
-            res = session.put(
-                url,
-                auth=auth_params,
-                json=json_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-        case "patch":
-            res = session.patch(
-                url,
-                auth=auth_params,
-                json=json_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-        case "post":
-            res = session.post(
-                url,
-                auth=auth_params,
-                json=json_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-        case "delete":
-            res = session.delete(
-                url,
-                auth=auth_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
+    if api_action == "get":
+        res = session.get(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "put":
+        res = session.put(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "patch":
+        res = session.patch(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "post":
+        res = session.post(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "delete":
+        res = session.delete(
+            url,
+            auth=auth_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
     raise_for_error(url, res, module, result)
     result["changed"] = True
     result["output"] = json_params

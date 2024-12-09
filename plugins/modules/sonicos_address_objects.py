@@ -271,24 +271,23 @@ def get_json_params(ip_type):
     }
     dict_object_type = json_params["address_objects"][0][ip_type]
 
-    match module.params["object_type"]:
-        case "host":
-            dict_object_type["host"] = {"ip": module.params["ip"]}
-        case "range":
-            dict_object_type["range"] = {
-                "begin": module.params["ip_range"]["begin"],
-                "end": module.params["ip_range"]["end"],
-            }
-        case "network":
-            dict_object_type["network"] = {
-                "subnet": module.params["network"]["subnet"],
-                "mask": module.params["network"]["mask"],
-            }
-        case "mac":
-            dict_object_type["address"] = module.params["mac"].replace(":", "").upper()
-            dict_object_type["multi_homed"] = module.params["multi_homed"]
-        case "fqdn":
-            dict_object_type["domain"] = module.params["fqdn"]
+    if module.params["object_type"] == "host":
+        dict_object_type["host"] = {"ip": module.params["ip"]}
+    if module.params["object_type"] == "range":
+        dict_object_type["range"] = {
+            "begin": module.params["ip_range"]["begin"],
+            "end": module.params["ip_range"]["end"],
+        }
+    if module.params["object_type"] == "network":
+        dict_object_type["network"] = {
+            "subnet": module.params["network"]["subnet"],
+            "mask": module.params["network"]["mask"],
+        }
+    if module.params["object_type"] == "mac":
+        dict_object_type["address"] = module.params["mac"].replace(":", "").upper()
+        dict_object_type["multi_homed"] = module.params["multi_homed"]
+    if module.params["object_type"] == "fqdn":
+        dict_object_type["domain"] = module.params["fqdn"]
 
     return json_params
 
