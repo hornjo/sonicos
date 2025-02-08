@@ -11,6 +11,9 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     authentication,
     commit,
     execute_api,
+    session,
+    raise_for_error,
+    logout,
 )
 
 __metaclass__ = type
@@ -38,7 +41,7 @@ options:
         required: true
         type: str
     ssl_verify:
-        description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
+        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
         default: true
@@ -250,7 +253,7 @@ module = AnsibleModule(
 # Defining global variables
 url_base = "https://" + module.params["hostname"] + "/api/sonicos/"
 url_address_objects = url_base + "address-objects/"
-auth_params = (module.params["username"], module.params["password"])
+auth_params = requests.auth.HTTPDigestAuth(module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
@@ -268,24 +271,23 @@ def get_json_params(ip_type):
     }
     dict_object_type = json_params["address_objects"][0][ip_type]
 
-    match module.params["object_type"]:
-        case "host":
-            dict_object_type["host"] = {"ip": module.params["ip"]}
-        case "range":
-            dict_object_type["range"] = {
-                "begin": module.params["ip_range"]["begin"],
-                "end": module.params["ip_range"]["end"],
-            }
-        case "network":
-            dict_object_type["network"] = {
-                "subnet": module.params["network"]["subnet"],
-                "mask": module.params["network"]["mask"],
-            }
-        case "mac":
-            dict_object_type["address"] = module.params["mac"].replace(":", "").upper()
-            dict_object_type["multi_homed"] = module.params["multi_homed"]
-        case "fqdn":
-            dict_object_type["domain"] = module.params["fqdn"]
+    if module.params["object_type"] == "host":
+        dict_object_type["host"] = {"ip": module.params["ip"]}
+    if module.params["object_type"] == "range":
+        dict_object_type["range"] = {
+            "begin": module.params["ip_range"]["begin"],
+            "end": module.params["ip_range"]["end"],
+        }
+    if module.params["object_type"] == "network":
+        dict_object_type["network"] = {
+            "subnet": module.params["network"]["subnet"],
+            "mask": module.params["network"]["mask"],
+        }
+    if module.params["object_type"] == "mac":
+        dict_object_type["address"] = module.params["mac"].replace(":", "").upper()
+        dict_object_type["multi_homed"] = module.params["multi_homed"]
+    if module.params["object_type"] == "fqdn":
+        dict_object_type["domain"] = module.params["fqdn"]
 
     return json_params
 
@@ -301,7 +303,8 @@ def address_object():
     api_action = None
 
     json_params = get_json_params(ip_type)
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if module.params["state"] == "present":
         api_action = "post"
@@ -341,6 +344,8 @@ def main():
     address_object()
 
     commit(url_base, auth_params, module, result)
+
+    logout(url_base, auth_params, module)
 
     module.exit_json(**result)
 

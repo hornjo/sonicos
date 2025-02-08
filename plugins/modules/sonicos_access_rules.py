@@ -12,6 +12,9 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     commit,
     execute_api,
     compare_json,
+    session,
+    raise_for_error,
+    logout,
 )
 
 __metaclass__ = type
@@ -39,7 +42,7 @@ options:
         required: True
         type: str
     ssl_verify:
-        description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is True.
+        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is True.
         required: False
         type: bool
         default: True
@@ -306,7 +309,7 @@ module = AnsibleModule(
 
 # Defining global variables
 url_base = "https://" + module.params["hostname"] + "/api/sonicos/"
-auth_params = (module.params["username"], module.params["password"])
+auth_params = requests.auth.HTTPDigestAuth(module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
@@ -459,9 +462,10 @@ def get_address_type(address_name):
         for address_kind in "objects", "groups":
             var_helper = "address_" + address_kind
             url = url_base + "address-" + address_kind + "/" + ip_version
-            req = requests.get(
+            req = session.get(
                 url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
             )
+            raise_for_error(url, req, module, result)
 
             if var_helper in req.json():
                 for item in req.json()[var_helper]:
@@ -477,7 +481,8 @@ def get_service_type(service_name):
     """Determinig the type for source and detination service"""
     service_type = "name"
     url = url_base + "service-groups"
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if "service_groups" in req.json():
         for item in req.json()["service_groups"]:
@@ -497,7 +502,8 @@ def access_rules():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if "access_rules" in req.json():
         for item in req.json()["access_rules"]:
@@ -563,6 +569,8 @@ def main():
     access_rules()
 
     commit(url_base, auth_params, module, result)
+
+    logout(url_base, auth_params, module)
 
     module.exit_json(**result)
 

@@ -5,79 +5,105 @@
 from __future__ import absolute_import, division, print_function
 import json
 import requests
+from collections import OrderedDict
 
 __metaclass__ = type
+# SonicOS 6.5 releases have an issue with order of the headers, so we need to force requests to use the right order.
+# For more details:  https://github.com/hornjo/sonicos/pull/5#issuecomment-2523443898
+# Also, in the requests library we can only do this with Session objects:  https://requests.readthedocs.io/en/latest/user/advanced/#header-ordering
+session = requests.Session()
+# This is the same default headers provided by requests, just in a different order.
+session.headers = OrderedDict([
+    ('Accept', '*/*'),
+    ('Accept-Encoding', requests.utils.DEFAULT_ACCEPT_ENCODING),
+    ('User-Agent', requests.utils.default_user_agent()),
+    ('Connection', 'keep-alive')
+])
+
+def raise_for_error(url, res, module, result, check_success=False):
+    if res.status_code != 200 or (check_success and res.json()["status"]["success"] is not True):
+        code = res.json()["status"]["info"][0]["code"]
+        msg = res.json()["status"]["info"][0]["message"]
+        text = 'API FAILURE:  URL: %s, FAILURE_CODE: %s, MESSAGE: %s' % (url, code, msg)
+        module.fail_json(msg=text, **result)
 
 
 def authentication(url_base, auth_params, module, result):
     """Basic authentication on the API"""
     url = url_base + "auth"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
-    if res.json()["status"]["info"][0]["config_mode"] == "No":
+    res = session.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, res, module, result)
+    # SonicOS 6.5 API is automatically in config mode and doesn't return this field.
+    if 'config_mode' in res.json()["status"]["info"][0] and res.json()["status"]["info"][0]["config_mode"] == "No":
         configmode(url_base, auth_params, module, result)
+
+
+def logout(url_base, auth_params, module):
+    """Logout from the API"""
+    url = url_base + "auth"
+    session.delete(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    # Ignore any failure response here, as the session is ending anyway.
 
 
 def configmode(url_base, auth_params, module, result):
     """Enter config mode"""
     url = url_base + "config-mode"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200:
-        module.fail_json(msg=msg, **result)
+    res = session.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, res, module, result)
 
 
 def commit(url_base, auth_params, module, result):
     """Commits the changes to the API"""
     url = url_base + "config/pending"
-    res = requests.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
-    msg = res.json()["status"]["info"][0]["message"]
-    if res.status_code != 200 or res.json()["status"]["success"] is not True:
-        module.fail_json(msg=msg, **result)
+    res = session.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, res, module, result, check_success=True)
 
 
 def execute_api(url, json_params, api_action, auth_params, module, result):
     """Takes the needed action to the API from the module"""
-    match api_action:
-        case "put":
-            res = requests.put(
-                url,
-                auth=auth_params,
-                json=json_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-        case "patch":
-            res = requests.patch(
-                url,
-                auth=auth_params,
-                json=json_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-        case "post":
-            res = requests.post(
-                url,
-                auth=auth_params,
-                json=json_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-        case "delete":
-            res = requests.delete(
-                url,
-                auth=auth_params,
-                verify=module.params["ssl_verify"],
-                timeout=10,
-            )
-    if res.status_code == 200:
-        result["changed"] = True
-        result["output"] = json_params
-        return
-    msg = res.json()["status"]["info"][0]["message"]
-    module.fail_json(msg=msg, **result)
+    if api_action == "get":
+        res = session.get(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "put":
+        res = session.put(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "patch":
+        res = session.patch(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "post":
+        res = session.post(
+            url,
+            auth=auth_params,
+            json=json_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    if api_action == "delete":
+        res = session.delete(
+            url,
+            auth=auth_params,
+            verify=module.params["ssl_verify"],
+            timeout=10,
+        )
+    raise_for_error(url, res, module, result)
+    result["changed"] = True
+    result["output"] = json_params
+    result["response"] = res.content
 
 
 def sort_json(json_data):

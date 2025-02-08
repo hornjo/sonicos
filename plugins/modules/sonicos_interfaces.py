@@ -12,6 +12,9 @@ from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functi
     commit,
     execute_api,
     compare_json,
+    session,
+    raise_for_error,
+    logout,
 )
 
 __metaclass__ = type
@@ -39,7 +42,7 @@ options:
         required: true
         type: str
     ssl_verify:
-        description: Defines whether you want to use thrusted ssl certification verfication or not. Default value is true.
+        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is true.
         required: false
         type: bool
         default: True
@@ -192,7 +195,7 @@ module = AnsibleModule(
 
 # Defining global variables
 url_base = "https://" + module.params["hostname"] + "/api/sonicos/"
-auth_params = (module.params["username"], module.params["password"])
+auth_params = requests.auth.HTTPDigestAuth(module.params["username"], module.params["password"])
 
 
 # Defining actual module functions
@@ -349,11 +352,8 @@ def interfaces():
     if module.params["state"] == "present":
         api_action = "post"
 
-    req = requests.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
-
-    # Debug
-    # module.fail_json(msg=json_params, **result)
-    # module.fail_json(msg=req.json(), **result)
+    req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
+    raise_for_error(url, req, module, result)
 
     if "interfaces" in req.json():
         for item in req.json()["interfaces"]:
@@ -398,13 +398,14 @@ def interfaces():
 
                 # module.fail_json(msg=tmp_json_params, **result)
 
-                requests.patch(
+                req = session.patch(
                     url,
                     auth=auth_params,
                     json=tmp_json_params,
                     verify=module.params["ssl_verify"],
                     timeout=10,
                 )
+                raise_for_error(url, req, module, result)
                 commit(url_base, auth_params, module, result)
 
     # Debug
@@ -426,6 +427,8 @@ def main():
     interfaces()
 
     commit(url_base, auth_params, module, result)
+
+    logout(url_base, auth_params, module)
 
     module.exit_json(**result)
 
