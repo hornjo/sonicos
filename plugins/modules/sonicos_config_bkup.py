@@ -8,7 +8,11 @@ import os
 import requests
 import urllib3
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import authentication, execute_api, logout  # NOQA
+from ansible_collections.hornjo.sonicos.plugins.module_utils.sonicos_core_functions import (
+    authentication,
+    execute_api,
+    logout,
+)  # NOQA
 
 __metaclass__ = type
 
@@ -35,7 +39,7 @@ options:
         required: true
         type: str
     ssl_verify:
-        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is true.
+        description: Defines whether you want to use trusted ssl certification verification or not. Default value is true.
         required: false
         type: bool
         default: True
@@ -92,20 +96,15 @@ module_args = dict(
     password=dict(type="str", required=True, no_log=True),
     ssl_verify=dict(type="bool", default=True),
     exp_format=dict(type="bool", required=False, default=False),
-    filename=dict(type="str", required=False, default=''),
-    dir_path=dict(type="path", required=False, default='')
+    filename=dict(type="str", required=False, default=""),
+    dir_path=dict(type="path", required=False, default=""),
 )
 
 # Defining registerable values
-result = dict(
-    changed=False
-)
+result = dict(changed=False)
 
 # Defining ansible settings
-module = AnsibleModule(
-    argument_spec=module_args,
-    supports_check_mode=False
-)
+module = AnsibleModule(argument_spec=module_args, supports_check_mode=False)
 
 # Defining global variables
 url_base = "https://" + module.params["hostname"] + "/api/sonicos/"
@@ -122,27 +121,27 @@ def main():
     authentication(url_base, auth_params, module, result)
 
     json_params = None
-    api_action = 'get'
-    url = url_base + 'export/current-config/cli'
+    api_action = "get"
+    url = url_base + "export/current-config/cli"
     if module.params["exp_format"]:
-        url = url_base + 'export/current-config/exp'
+        url = url_base + "export/current-config/exp"
 
-    dir_path = './backup'
-    if module.params['dir_path']:
-        dir_path = module.params['dir_path']
+    dir_path = "./backup"
+    if module.params["dir_path"]:
+        dir_path = module.params["dir_path"]
 
-    filename = 'backup.txt'
-    if module.params['exp_format']:
-        filename = 'backup.exp'
-    if module.params['filename']:
-        filename = module.params['filename']
-    
+    filename = "backup.txt"
+    if module.params["exp_format"]:
+        filename = "backup.exp"
+    if module.params["filename"]:
+        filename = module.params["filename"]
+
     output_file = os.path.join(dir_path, filename)
 
     execute_api(url, json_params, api_action, auth_params, module, result)
 
-    with open(output_file, 'wb') as output:
-        output.write(result['response'])
+    with open(output_file, "wb") as output:
+        output.write(result["response"])
 
     logout(url_base, auth_params, module)
 

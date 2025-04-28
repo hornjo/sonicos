@@ -42,7 +42,7 @@ options:
         required: true
         type: str
     ssl_verify:
-        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is true.
+        description: Defines whether you want to use trusted ssl certification verification or not. Default value is true.
         required: false
         type: bool
         default: True
@@ -247,7 +247,7 @@ def get_json_params():
             if value is not None:
                 json_helper["ipv4"].update({key: value})
 
-        ip_assigment_params = {
+        ip_assignment_params = {
             "ip_assignment": {
                 "mode": {
                     "dhcp": {
@@ -263,7 +263,7 @@ def get_json_params():
         }
 
         if module.params["ip_assignment"] == "static":
-            ip_assigment_params = {
+            ip_assignment_params = {
                 "ip_assignment": {
                     "mode": {
                         "static": {
@@ -285,9 +285,9 @@ def get_json_params():
                     },
                 }
 
-                ip_assigment_params["ip_assignment"]["mode"]["static"].update(dns_params)
+                ip_assignment_params["ip_assignment"]["mode"]["static"].update(dns_params)
 
-        json_helper["ipv4"].update(ip_assigment_params)
+        json_helper["ipv4"].update(ip_assignment_params)
 
         if module.params["zone"] == "WAN":
             wan_params = {

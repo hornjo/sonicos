@@ -8,7 +8,7 @@ authors:
   - Marco Fuchs (@FuxMak)
 description: Manages the sonicos with features provided by the API.
 license:
-  - GPL-2.0-or-later
+  - GNU General Public License v3.0+
 tags:
   - sonicwall
   - firewall

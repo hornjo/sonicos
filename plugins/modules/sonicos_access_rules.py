@@ -42,7 +42,7 @@ options:
         required: True
         type: str
     ssl_verify:
-        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is True.
+        description: Defines whether you want to use trusted ssl certification verification or not. Default value is True.
         required: False
         type: bool
         default: True
@@ -86,13 +86,13 @@ options:
         type: bool
         default: True
     users_include:
-        description: The users which will be included in the acces rules.
+        description: The users which will be included in the access rules.
         required: False
         type: str
         choices: "All", "Everyone", "Trusted Users", "Content Filtering Bypass", "Limited Administrators", "SonicWALL Administrators", "SonicWALL Read-Only Admins", "Guest Services", "Guest Administrators", "SSLVPN Services"
         default: "All"
     users_exclude:
-        description: The users which will be excluded in the acces rules.
+        description: The users which will be excluded in the access rules.
         required: False
         type: str
         choices: "None", "Everyone", "Trusted Users", "Content Filtering Bypass", "Limited Administrators", "SonicWALL Administrators", "SonicWALL Read-Only Admins", "Guest Services", "Guest Administrators", "SSLVPN Services" 
@@ -102,7 +102,7 @@ options:
         required: False
         type: str
     max_connections:
-        description: Persentage of connection which will be allowed in the rule. Only Values between 1 and 100.
+        description: Percentage of connection which will be allowed in the rule. Only Values between 1 and 100.
         required: False
         type: int
         default: 100
@@ -186,7 +186,7 @@ EXAMPLES = r"""
     destination_service: ICMP
     rule_name: Development_2
     comment: |
-      Ansible Testrule
+      Ansible test rule
       Requires knowledge
     max_connections: 99
     sip: true
@@ -457,14 +457,12 @@ def get_json_params():
 
 
 def get_address_type(address_name):
-    """Determinig the type for source and destination address"""
+    """Determining the type for source and destination address"""
     for ip_version in "ipv4", "ipv6":
         for address_kind in "objects", "groups":
             var_helper = "address_" + address_kind
             url = url_base + "address-" + address_kind + "/" + ip_version
-            req = session.get(
-                url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10
-            )
+            req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
             raise_for_error(url, req, module, result)
 
             if var_helper in req.json():
@@ -478,7 +476,7 @@ def get_address_type(address_name):
 
 
 def get_service_type(service_name):
-    """Determinig the type for source and detination service"""
+    """Determining the type for source and destination service"""
     service_type = "name"
     url = url_base + "service-groups"
     req = session.get(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)

@@ -41,7 +41,7 @@ options:
         required: true
         type: str
     ssl_verify:
-        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is true.
+        description: Defines whether you want to use trusted ssl certification verification or not. Default value is true.
         required: false
         type: bool
         default: true
@@ -94,7 +94,7 @@ options:
         required: false
         type: str
     multi_homed:
-        description: Defines whether a mac addres can be multi homed or not. Default is true.
+        description: Defines whether a mac address can be multi homed or not. Default is true.
         required: false
         type: bool
     state:
@@ -195,7 +195,7 @@ result:
         "output": {
             "fqdn": {
                 "domain": "github.com/hornjo",
-                "name": "my_objcet",
+                "name": "my_object",
                 "zone": "WAN"
             }
     }

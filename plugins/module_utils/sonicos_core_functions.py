@@ -1,6 +1,6 @@
 # Copyright: (c) 2023, Horn Johannes (@hornjo)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-"""Module util for providing core functionalites"""
+"""Module util for providing core functionalities"""
 
 from __future__ import absolute_import, division, print_function
 import json
@@ -13,18 +13,21 @@ __metaclass__ = type
 # Also, in the requests library we can only do this with Session objects:  https://requests.readthedocs.io/en/latest/user/advanced/#header-ordering
 session = requests.Session()
 # This is the same default headers provided by requests, just in a different order.
-session.headers = OrderedDict([
-    ('Accept', '*/*'),
-    ('Accept-Encoding', requests.utils.DEFAULT_ACCEPT_ENCODING),
-    ('User-Agent', requests.utils.default_user_agent()),
-    ('Connection', 'keep-alive')
-])
+session.headers = OrderedDict(
+    [
+        ("Accept", "*/*"),
+        ("Accept-Encoding", requests.utils.DEFAULT_ACCEPT_ENCODING),
+        ("User-Agent", requests.utils.default_user_agent()),
+        ("Connection", "keep-alive"),
+    ]
+)
+
 
 def raise_for_error(url, res, module, result, check_success=False):
     if res.status_code != 200 or (check_success and res.json()["status"]["success"] is not True):
         code = res.json()["status"]["info"][0]["code"]
         msg = res.json()["status"]["info"][0]["message"]
-        text = 'API FAILURE:  URL: %s, FAILURE_CODE: %s, MESSAGE: %s' % (url, code, msg)
+        text = "API FAILURE:  URL: %s, FAILURE_CODE: %s, MESSAGE: %s" % (url, code, msg)
         module.fail_json(msg=text, **result)
 
 
@@ -34,7 +37,10 @@ def authentication(url_base, auth_params, module, result):
     res = session.post(url, auth=auth_params, verify=module.params["ssl_verify"], timeout=10)
     raise_for_error(url, res, module, result)
     # SonicOS 6.5 API is automatically in config mode and doesn't return this field.
-    if 'config_mode' in res.json()["status"]["info"][0] and res.json()["status"]["info"][0]["config_mode"] == "No":
+    if (
+        "config_mode" in res.json()["status"]["info"][0]
+        and res.json()["status"]["info"][0]["config_mode"] == "No"
+    ):
         configmode(url_base, auth_params, module, result)
 
 

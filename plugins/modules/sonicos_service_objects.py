@@ -25,7 +25,7 @@ module: sonicos_service_objects
 short_description: Manages all available features for service objects on SonicWALL
 version_added: "1.0.0"
 description:
-- This brings the capability to authenticate, absolutly manage service objects and commits the changes
+- This brings the capability to authenticate, absolutely manage service objects and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
     hostname:
@@ -41,7 +41,7 @@ options:
         required: true
         type: str
     ssl_verify:
-        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is true.
+        description: Defines whether you want to use trusted ssl certification verification or not. Default value is true.
         required: false
         type: bool
         default: true
@@ -54,15 +54,15 @@ options:
         required: true
         type: str
     begin:
-        description: Defining the begin of a port range, only requiered with tcp and udp.
+        description: Defining the begin of a port range, only required with tcp and udp.
         required: false
         type: int
     end:
-        description: Defining the end of a port range, only requiered with tcp and udp.
+        description: Defining the end of a port range, only required with tcp and udp.
         required: false
         type: int
     sub_type:
-        description: Defining the sub type for certain protocols. They Either are none by default or exactly accroding to the predefined ones by sonicwall.
+        description: Defining the sub type for certain protocols. They Either are none by default or exactly according to the predefined ones by sonicwall.
         required: false
         default: "none"
         type: str

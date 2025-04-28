@@ -26,7 +26,7 @@ module: sonicos_zones
 short_description: Manages all available features for zones on SonicWALL
 version_added: "1.0.0"
 description:
-- This brings the capability to authenticate, absolutly manage zones and commits the changes
+- This brings the capability to authenticate, absolutely manage zones and commits the changes
 - This module is only supported on sonicos 7 or newer
 options:
     hostname:
@@ -42,7 +42,7 @@ options:
         required: true
         type: str
     ssl_verify:
-        description: Defines whether you want to use trusted ssl certification verfication or not. Default value is true.
+        description: Defines whether you want to use trusted ssl certification verification or not. Default value is true.
         required: false
         type: bool
         default: true
